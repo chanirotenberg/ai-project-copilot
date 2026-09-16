@@ -1,0 +1,40 @@
+# .NET
+bin/
+obj/
+
+# User-specific
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS / VS Code
+.vs/
+.vscode/
+
+# Rider
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment / secrets
+.env
+.env.*
+appsettings.Local.json
+appsettings.*.Local.json
+
+# Test results
+TestResults/
+coverage/
+coverage.*
+
+# Docker local data
+postgres-data/
+
+# Local development settings
+src/ProjectCopilot.Api/appsettings.Development.json

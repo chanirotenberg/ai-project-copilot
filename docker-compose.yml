@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: projectcopilot-postgres
+    environment:
+      POSTGRES_DB: projectcopilot
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - projectcopilot-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  projectcopilot-postgres-data:
