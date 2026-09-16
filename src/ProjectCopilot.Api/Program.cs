@@ -32,12 +32,26 @@ builder.Services.AddScoped<IValidator<CreateTaskCommand>, CreateTaskValidator>()
 builder.Services.AddScoped<UpdateTaskHandler>();
 builder.Services.AddScoped<IValidator<UpdateTaskCommand>, UpdateTaskValidator>();
 
+builder.Services.AddScoped<DemoDataSeeder>();
+
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+if (args.Contains("--seed-demo"))
+{
+    using var scope = app.Services.CreateScope();
+
+    var seeder = scope.ServiceProvider
+        .GetRequiredService<DemoDataSeeder>();
+
+    await seeder.SeedAsync();
+
+    return;
+}
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
