@@ -8,25 +8,42 @@ namespace ProjectCopilot.Infrastructure.Identity;
 
 public sealed class IdentityService : IIdentityService
 {
-    // Fixed in-memory user/hash used only to absorb the cost of a password-hash
-    // verification when no matching account exists (see ValidateCredentialsAsync).
-    // Never persisted to the database.
+    // Fixed in-memory user used only to absorb the cost of a password-hash verification
+    // when no matching account exists (see ValidateCredentialsAsync). Never persisted
+    // to the database.
     private static readonly ApplicationUser DummyUser = new()
     {
         UserName = "dummy@timing-mitigation.local",
         Email = "dummy@timing-mitigation.local"
     };
 
-    private static readonly string DummyPasswordHash =
-        new PasswordHasher<ApplicationUser>().HashPassword(
-            DummyUser,
-            "Dummy-P@ssw0rd-For-Timing-Mitigation-Only");
+    // Cached once for the process lifetime (NOT a per-instance field) since IdentityService
+    // is registered AddScoped - a new instance per request. A per-instance Lazy<string> would
+    // recompute the hash on every request, making the "user not found" branch below do TWO
+    // expensive PBKDF2 operations (hash + verify) while "wrong password" only does ONE
+    // (CheckPasswordAsync's internal verify), reintroducing (and worsening) the exact timing
+    // gap this mitigation exists to close. Whichever request's IdentityService constructs
+    // first seeds this static cache; safe, since PasswordHasher<TUser>'s behavior only depends
+    // on the singleton-configured IOptions<PasswordHasherOptions>, not on which scope resolved
+    // it - so it's still derived from the real configured hasher, just computed once.
+    private static Lazy<string>? _dummyPasswordHash;
+    private static readonly object DummyHashLock = new();
 
     private readonly UserManager<ApplicationUser> _userManager;
 
     public IdentityService(UserManager<ApplicationUser> userManager)
     {
         _userManager = userManager;
+
+        if (_dummyPasswordHash is null)
+        {
+            lock (DummyHashLock)
+            {
+                _dummyPasswordHash ??= new Lazy<string>(() =>
+                    userManager.PasswordHasher.HashPassword(
+                        DummyUser, "Dummy-P@ssw0rd-For-Timing-Mitigation-Only"));
+            }
+        }
     }
 
     public async Task<Guid> RegisterAsync(
@@ -77,7 +94,7 @@ public sealed class IdentityService : IIdentityService
             // fixed dummy user/hash, result ignored) so this branch costs about the same as the
             // "user exists but wrong password" branch below. Without this, response time would
             // leak whether an email is registered.
-            _userManager.PasswordHasher.VerifyHashedPassword(DummyUser, DummyPasswordHash, password);
+            _userManager.PasswordHasher.VerifyHashedPassword(DummyUser, _dummyPasswordHash!.Value, password);
 
             throw new InvalidCredentialsException();
         }

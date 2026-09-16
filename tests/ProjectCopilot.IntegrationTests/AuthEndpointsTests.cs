@@ -39,8 +39,12 @@ public class AuthEndpointsTests : IClassFixture<ProjectCopilotWebApplicationFact
         Assert.Equal(email, result.Email);
     }
 
+    // Regression guard for the UserName == Email invariant (now also backed by the DB
+    // unique index on NormalizedEmail): the duplicate-email failure must surface as an
+    // "Email" field validation error, not "Password" or some other field, since that's
+    // the contract the Identity-error-mapping logic in IdentityService promises to API clients.
     [Fact]
-    public async Task Register_WithDuplicateEmail_ShouldReturnBadRequest()
+    public async Task Register_WithDuplicateEmail_ShouldReturnBadRequestWithEmailFieldError()
     {
         using var client = _factory.CreateClient();
         var email = NewEmail();
@@ -56,6 +60,11 @@ public class AuthEndpointsTests : IClassFixture<ProjectCopilotWebApplicationFact
             new RegisterCommand(email, "ValidPass123"));
 
         Assert.Equal(HttpStatusCode.BadRequest, secondResponse.StatusCode);
+
+        var problem = await secondResponse.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+
+        Assert.NotNull(problem);
+        Assert.Contains("Email", problem!.Errors.Keys);
     }
 
     [Fact]

@@ -16,6 +16,8 @@ public static class AuthEndpoints
         {
             var result = await handler.HandleAsync(command, cancellationToken);
 
+            // Location is symbolic — no GET /api/v1/auth/users/{id} endpoint exists yet to
+            // resolve it. Still returning 201/Created since a resource was in fact created.
             return Results.Created(
                 $"/api/v1/auth/users/{result.UserId}",
                 result);

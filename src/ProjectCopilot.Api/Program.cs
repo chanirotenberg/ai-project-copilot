@@ -11,7 +11,6 @@ using ProjectCopilot.Application.Tasks.CreateTask;
 using ProjectCopilot.Application.Abstractions;
 using ProjectCopilot.Infrastructure.Repositories;
 
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ProjectCopilot.Infrastructure.Persistence;
 using ProjectCopilot.Infrastructure.Identity;
@@ -34,7 +33,6 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
         options.Password.RequireNonAlphanumeric = false;
         options.User.RequireUniqueEmail = true;
     })
-    .AddRoles<IdentityRole<Guid>>()
     .AddEntityFrameworkStores<AppDbContext>();
 
 builder.Services.AddOptions<JwtOptions>()
