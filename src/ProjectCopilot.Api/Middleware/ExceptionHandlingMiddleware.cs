@@ -52,6 +52,17 @@ public sealed class ExceptionHandlingMiddleware
                 Detail = ex.Message
             });
         }
+        catch (InvalidCredentialsException ex)
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+
+            await context.Response.WriteAsJsonAsync(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Authentication failed.",
+                Detail = ex.Message
+            });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception occurred.");
