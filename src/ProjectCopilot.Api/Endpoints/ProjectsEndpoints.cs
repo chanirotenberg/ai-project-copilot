@@ -28,7 +28,7 @@ public static class ProjectsEndpoints
             return project is null
                 ? Results.NotFound()
                 : Results.Ok(project);
-        });
+        }).RequireAuthorization();
 
         group.MapPost("/", async (
             CreateProjectCommand command,

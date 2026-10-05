@@ -18,15 +18,17 @@ using ProjectCopilot.Infrastructure.Identity;
 using ProjectCopilot.Application.Auth.Register;
 using ProjectCopilot.Application.Auth.Login;
 
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// This slice only issues JWTs (Register/Login). AddAuthentication/AddJwtBearer and
-// UseAuthentication/UseAuthorization/[Authorize] are deliberately deferred to the next slice,
-// since there is no protected endpoint yet to consume them.
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
     {
         options.Password.RequiredLength = 8;
@@ -44,6 +46,29 @@ builder.Services.AddOptions<JwtOptions>()
         o => !string.IsNullOrWhiteSpace(o.Issuer) && !string.IsNullOrWhiteSpace(o.Audience),
         "Jwt:Issuer and Jwt:Audience must both be configured.")
     .ValidateOnStart();
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer();
+
+builder.Services
+    .AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<IOptions<JwtOptions>>((bearerOptions, jwtOptionsAccessor) =>
+    {
+        var jwt = jwtOptionsAccessor.Value;
+        bearerOptions.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwt.Issuer,
+            ValidAudience = jwt.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key))
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
@@ -88,6 +113,9 @@ if (args.Contains("--seed-demo"))
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapProjectsEndpoints();
 app.MapTasksEndpoints();
