@@ -17,6 +17,7 @@ using ProjectCopilot.Infrastructure.Identity;
 
 using ProjectCopilot.Application.Auth.Register;
 using ProjectCopilot.Application.Auth.Login;
+using ProjectCopilot.Application.Auth.Refresh;
 
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -84,12 +85,17 @@ builder.Services.AddScoped<IValidator<UpdateTaskCommand>, UpdateTaskValidator>()
 
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+builder.Services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
 builder.Services.AddScoped<RegisterHandler>();
 builder.Services.AddScoped<IValidator<RegisterCommand>, RegisterValidator>();
 
 builder.Services.AddScoped<LoginHandler>();
 builder.Services.AddScoped<IValidator<LoginCommand>, LoginValidator>();
+
+builder.Services.AddScoped<RefreshHandler>();
+builder.Services.AddScoped<IValidator<RefreshCommand>, RefreshCommandValidator>();
 
 builder.Services.AddScoped<DemoDataSeeder>();
 

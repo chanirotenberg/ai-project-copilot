@@ -108,4 +108,13 @@ public sealed class IdentityService : IIdentityService
 
         return (user.Id, user.Email!);
     }
+
+    public async Task<string?> GetEmailByIdAsync(
+        Guid userId,
+        CancellationToken ct)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+
+        return user?.Email;
+    }
 }

@@ -16,6 +16,8 @@ public class AppDbContext : IdentityUserContext<ApplicationUser, Guid>
 
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
 
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
     // Enforces email uniqueness at the database level. Without this, two concurrent
     // registrations with the same email could both pass the application-level
     // RequireUniqueEmail check before either commits.
@@ -24,5 +26,20 @@ public class AppDbContext : IdentityUserContext<ApplicationUser, Guid>
         base.OnModelCreating(builder); // required — IdentityUserContext's own Identity table config runs here
 
         builder.Entity<ApplicationUser>().HasIndex(u => u.NormalizedEmail).IsUnique();
+
+        builder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasIndex(t => t.TokenHash).IsUnique();
+            entity.HasIndex(t => t.UserId);
+
+            // Maps RowVersion to PostgreSQL's real xmin system column (already present on every
+            // table) instead of an app-managed column, so rotation's concurrency check is backed
+            // by Postgres itself rather than a value this code has to maintain.
+            entity.Property(t => t.RowVersion)
+                .HasColumnName("xmin")
+                .HasColumnType("xid")
+                .ValueGeneratedOnAddOrUpdate()
+                .IsRowVersion();
+        });
     }
 }

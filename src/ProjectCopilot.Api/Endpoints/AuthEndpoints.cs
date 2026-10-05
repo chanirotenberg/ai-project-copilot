@@ -1,4 +1,5 @@
 using ProjectCopilot.Application.Auth.Login;
+using ProjectCopilot.Application.Auth.Refresh;
 using ProjectCopilot.Application.Auth.Register;
 
 namespace ProjectCopilot.Api.Endpoints;
@@ -26,6 +27,17 @@ public static class AuthEndpoints
         group.MapPost("/login", async (
             LoginCommand command,
             LoginHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(command, cancellationToken);
+
+            return Results.Ok(result);
+        });
+
+        // Anonymous by design, same as /login - the refresh token itself is the credential.
+        group.MapPost("/refresh", async (
+            RefreshCommand command,
+            RefreshHandler handler,
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(command, cancellationToken);

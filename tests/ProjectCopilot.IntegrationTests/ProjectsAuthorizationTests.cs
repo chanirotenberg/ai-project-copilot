@@ -4,8 +4,6 @@ using System.Net.Http.Json;
 using System.Text;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
-using ProjectCopilot.Application.Auth.Login;
-using ProjectCopilot.Application.Auth.Register;
 using ProjectCopilot.Application.Projects.CreateProject;
 using ProjectCopilot.Domain.Entities;
 
@@ -19,8 +17,6 @@ public class ProjectsAuthorizationTests : IClassFixture<ProjectCopilotWebApplica
     {
         _factory = factory;
     }
-
-    private static string NewEmail() => $"user-{Guid.NewGuid():N}@test.local";
 
     [Fact]
     public async Task GetProjectById_WithoutToken_ShouldReturnUnauthorized()
@@ -62,25 +58,8 @@ public class ProjectsAuthorizationTests : IClassFixture<ProjectCopilotWebApplica
     public async Task GetProjectById_WithValidToken_ShouldReturnProject()
     {
         using var client = _factory.CreateClient();
-        var email = NewEmail();
-        const string password = "ValidPass123";
 
-        var registerResponse = await client.PostAsJsonAsync(
-            "/api/v1/auth/register",
-            new RegisterCommand(email, password));
-
-        Assert.Equal(HttpStatusCode.Created, registerResponse.StatusCode);
-
-        var loginResponse = await client.PostAsJsonAsync(
-            "/api/v1/auth/login",
-            new LoginCommand(email, password));
-
-        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
-
-        var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResult>();
-
-        Assert.NotNull(loginResult);
-        Assert.False(string.IsNullOrWhiteSpace(loginResult!.AccessToken));
+        var (accessToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(client);
 
         var createResponse = await client.PostAsJsonAsync(
             "/api/v1/projects",
@@ -93,7 +72,7 @@ public class ProjectsAuthorizationTests : IClassFixture<ProjectCopilotWebApplica
         Assert.NotNull(createdProject);
 
         client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", loginResult.AccessToken);
+            new AuthenticationHeaderValue("Bearer", accessToken);
 
         var getResponse = await client.GetAsync($"/api/v1/projects/{createdProject!.Id}");
 

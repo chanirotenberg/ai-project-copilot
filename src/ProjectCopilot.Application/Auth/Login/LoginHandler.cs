@@ -7,15 +7,21 @@ public sealed class LoginHandler
 {
     private readonly IIdentityService _identityService;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
+    private readonly IRefreshTokenGenerator _refreshTokenGenerator;
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IValidator<LoginCommand> _validator;
 
     public LoginHandler(
         IIdentityService identityService,
         IJwtTokenGenerator jwtTokenGenerator,
+        IRefreshTokenGenerator refreshTokenGenerator,
+        IRefreshTokenRepository refreshTokenRepository,
         IValidator<LoginCommand> validator)
     {
         _identityService = identityService;
         _jwtTokenGenerator = jwtTokenGenerator;
+        _refreshTokenGenerator = refreshTokenGenerator;
+        _refreshTokenRepository = refreshTokenRepository;
         _validator = validator;
     }
 
@@ -32,6 +38,17 @@ public sealed class LoginHandler
 
         var (accessToken, expiresAtUtc) = _jwtTokenGenerator.Generate(userId, email);
 
-        return new LoginResult(accessToken, expiresAtUtc, userId, email);
+        var (rawRefreshToken, refreshTokenHash, refreshTokenExpiresAtUtc) = _refreshTokenGenerator.Generate();
+
+        await _refreshTokenRepository.AddAsync(
+            Guid.NewGuid(),
+            userId,
+            refreshTokenHash,
+            refreshTokenExpiresAtUtc,
+            cancellationToken);
+
+        await _refreshTokenRepository.SaveChangesAsync(cancellationToken);
+
+        return new LoginResult(accessToken, expiresAtUtc, userId, email, rawRefreshToken);
     }
 }
