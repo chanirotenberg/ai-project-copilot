@@ -366,4 +366,134 @@ public class ProjectMembershipAuthorizationTests : IClassFixture<ProjectCopilotW
         Assert.Equal(nonexistentBody!.Title, forbiddenBody.Title);
         Assert.Equal(nonexistentBody.Status, forbiddenBody.Status);
     }
+
+    [Fact]
+    public async Task GetTasks_NonexistentVsForbiddenProjectId_ShouldReturnIdenticallyShapedNotFound()
+    {
+        using var ownerClient = _factory.CreateClient();
+        using var outsiderClient = _factory.CreateClient();
+
+        var (ownerToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(ownerClient);
+        var (outsiderToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(outsiderClient);
+
+        var project = await CreateProjectAsync(ownerClient, ownerToken, "Body-Shape Tasks List Project");
+
+        Authenticate(outsiderClient, outsiderToken);
+        var forbiddenResponse = await outsiderClient.GetAsync($"/api/v1/tasks?projectId={project.Id}");
+
+        var nonexistentResponse = await outsiderClient.GetAsync($"/api/v1/tasks?projectId={Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.NotFound, forbiddenResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, nonexistentResponse.StatusCode);
+
+        Assert.Equal(
+            nonexistentResponse.Content.Headers.ContentType?.MediaType,
+            forbiddenResponse.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("application/json", forbiddenResponse.Content.Headers.ContentType?.MediaType);
+
+        var forbiddenBody = await forbiddenResponse.Content.ReadFromJsonAsync<ProblemDetails>();
+        var nonexistentBody = await nonexistentResponse.Content.ReadFromJsonAsync<ProblemDetails>();
+
+        Assert.NotNull(forbiddenBody);
+        Assert.NotNull(nonexistentBody);
+        Assert.False(string.IsNullOrEmpty(forbiddenBody!.Title));
+        Assert.Equal(nonexistentBody!.Title, forbiddenBody.Title);
+        Assert.Equal(nonexistentBody.Status, forbiddenBody.Status);
+    }
+
+    [Fact]
+    public async Task CreateTask_NonexistentVsForbiddenProjectId_ShouldReturnIdenticallyShapedNotFound()
+    {
+        using var ownerClient = _factory.CreateClient();
+        using var outsiderClient = _factory.CreateClient();
+
+        var (ownerToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(ownerClient);
+        var (outsiderToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(outsiderClient);
+
+        var project = await CreateProjectAsync(ownerClient, ownerToken, "Body-Shape Create Task Project");
+
+        Authenticate(outsiderClient, outsiderToken);
+        var forbiddenResponse = await outsiderClient.PostAsJsonAsync(
+            "/api/v1/tasks",
+            new CreateTaskCommand(project.Id, "Forbidden task", null, "Medium", null, null));
+
+        var nonexistentResponse = await outsiderClient.PostAsJsonAsync(
+            "/api/v1/tasks",
+            new CreateTaskCommand(Guid.NewGuid(), "Nonexistent-project task", null, "Medium", null, null));
+
+        Assert.Equal(HttpStatusCode.NotFound, forbiddenResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, nonexistentResponse.StatusCode);
+
+        Assert.Equal(
+            nonexistentResponse.Content.Headers.ContentType?.MediaType,
+            forbiddenResponse.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("application/json", forbiddenResponse.Content.Headers.ContentType?.MediaType);
+
+        var forbiddenBody = await forbiddenResponse.Content.ReadFromJsonAsync<ProblemDetails>();
+        var nonexistentBody = await nonexistentResponse.Content.ReadFromJsonAsync<ProblemDetails>();
+
+        Assert.NotNull(forbiddenBody);
+        Assert.NotNull(nonexistentBody);
+        Assert.False(string.IsNullOrEmpty(forbiddenBody!.Title));
+        Assert.Equal(nonexistentBody!.Title, forbiddenBody.Title);
+        Assert.Equal(nonexistentBody.Status, forbiddenBody.Status);
+    }
+
+    [Fact]
+    public async Task UpdateTask_NonexistentVsForbiddenTaskId_ShouldReturnIdenticallyShapedNotFound()
+    {
+        using var ownerClient = _factory.CreateClient();
+        using var outsiderClient = _factory.CreateClient();
+
+        var (ownerToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(ownerClient);
+        var (outsiderToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(outsiderClient);
+
+        var project = await CreateProjectAsync(ownerClient, ownerToken, "Body-Shape Update Task Project");
+
+        var createTaskResponse = await ownerClient.PostAsJsonAsync(
+            "/api/v1/tasks",
+            new CreateTaskCommand(project.Id, "Body-shape update task", null, "Medium", null, null));
+
+        Assert.Equal(HttpStatusCode.Created, createTaskResponse.StatusCode);
+
+        var task = await createTaskResponse.Content.ReadFromJsonAsync<TaskItem>();
+        Assert.NotNull(task);
+
+        var updatePayload = new
+        {
+            title = "Attempted update",
+            description = (string?)null,
+            status = "InProgress",
+            priority = "High",
+            assignedUserId = (Guid?)null,
+            dueDate = (DateTime?)null,
+            isBlocked = false
+        };
+
+        Authenticate(outsiderClient, outsiderToken);
+        var forbiddenResponse = await outsiderClient.PutAsJsonAsync(
+            $"/api/v1/tasks/{task!.Id}",
+            updatePayload);
+
+        var nonexistentResponse = await outsiderClient.PutAsJsonAsync(
+            $"/api/v1/tasks/{Guid.NewGuid()}",
+            updatePayload);
+
+        Assert.Equal(HttpStatusCode.NotFound, forbiddenResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, nonexistentResponse.StatusCode);
+
+        Assert.Equal(
+            nonexistentResponse.Content.Headers.ContentType?.MediaType,
+            forbiddenResponse.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("application/json", forbiddenResponse.Content.Headers.ContentType?.MediaType);
+
+        var forbiddenBody = await forbiddenResponse.Content.ReadFromJsonAsync<ProblemDetails>();
+        var nonexistentBody = await nonexistentResponse.Content.ReadFromJsonAsync<ProblemDetails>();
+
+        Assert.NotNull(forbiddenBody);
+        Assert.NotNull(nonexistentBody);
+        Assert.False(string.IsNullOrEmpty(forbiddenBody!.Title));
+        Assert.Equal(nonexistentBody!.Title, forbiddenBody.Title);
+        Assert.Equal(nonexistentBody.Status, forbiddenBody.Status);
+    }
 }
