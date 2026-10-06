@@ -8,11 +8,16 @@ public interface IProjectRepository
         Guid id,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<Project>> GetAllAsync(
+    Task<IReadOnlyList<Project>> GetAllForUserAsync(
+        Guid userId,
         CancellationToken cancellationToken = default);
 
     Task AddAsync(
         Project project,
+        CancellationToken cancellationToken = default);
+
+    Task AddMemberAsync(
+        ProjectMember member,
         CancellationToken cancellationToken = default);
 
     Task SaveChangesAsync(

@@ -24,11 +24,14 @@ public class ProjectRepository : IProjectRepository
                 cancellationToken);
     }
 
-    public async Task<IReadOnlyList<Project>> GetAllAsync(
+    public async Task<IReadOnlyList<Project>> GetAllForUserAsync(
+        Guid userId,
         CancellationToken cancellationToken = default)
     {
         return await _dbContext.Projects
             .AsNoTracking()
+            .Where(project => _dbContext.ProjectMembers
+                .Any(member => member.ProjectId == project.Id && member.UserId == userId))
             .OrderByDescending(project => project.CreatedAt)
             .ToListAsync(cancellationToken);
     }
@@ -38,6 +41,13 @@ public class ProjectRepository : IProjectRepository
         CancellationToken cancellationToken = default)
     {
         await _dbContext.Projects.AddAsync(project, cancellationToken);
+    }
+
+    public async Task AddMemberAsync(
+        ProjectMember member,
+        CancellationToken cancellationToken = default)
+    {
+        await _dbContext.ProjectMembers.AddAsync(member, cancellationToken);
     }
 
     public async Task SaveChangesAsync(

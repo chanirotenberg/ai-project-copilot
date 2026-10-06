@@ -61,18 +61,18 @@ public class ProjectsAuthorizationTests : IClassFixture<ProjectCopilotWebApplica
 
         var (accessToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(client);
 
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
         var createResponse = await client.PostAsJsonAsync(
             "/api/v1/projects",
-            new CreateProjectCommand("Auth Test Project", null, null, Guid.NewGuid()));
+            new CreateProjectCommand("Auth Test Project", null, null));
 
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
 
         var createdProject = await createResponse.Content.ReadFromJsonAsync<Project>();
 
         Assert.NotNull(createdProject);
-
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", accessToken);
 
         var getResponse = await client.GetAsync($"/api/v1/projects/{createdProject!.Id}");
 

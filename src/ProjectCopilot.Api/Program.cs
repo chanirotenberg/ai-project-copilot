@@ -73,6 +73,7 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+builder.Services.AddScoped<IProjectMembershipService, ProjectMembershipService>();
 
 builder.Services.AddScoped<CreateProjectHandler>();
 builder.Services.AddScoped<IValidator<CreateProjectCommand>, CreateProjectValidator>();

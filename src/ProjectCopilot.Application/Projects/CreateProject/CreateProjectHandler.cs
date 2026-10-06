@@ -19,6 +19,7 @@ public sealed class CreateProjectHandler
 
     public async Task<Project> HandleAsync(
         CreateProjectCommand command,
+        Guid userId,
         CancellationToken cancellationToken = default)
     {
         await _validator.ValidateAndThrowAsync(command, cancellationToken);
@@ -32,12 +33,22 @@ public sealed class CreateProjectHandler
             Description = command.Description?.Trim(),
             Status = "Active",
             Deadline = command.Deadline,
-            CreatedByUserId = command.CreatedByUserId,
+            CreatedByUserId = userId,
             CreatedAt = now,
             UpdatedAt = now
         };
 
         await _projectRepository.AddAsync(project, cancellationToken);
+
+        await _projectRepository.AddMemberAsync(
+            new ProjectMember
+            {
+                ProjectId = project.Id,
+                UserId = userId,
+                CreatedAtUtc = now
+            },
+            cancellationToken);
+
         await _projectRepository.SaveChangesAsync(cancellationToken);
 
         return project;

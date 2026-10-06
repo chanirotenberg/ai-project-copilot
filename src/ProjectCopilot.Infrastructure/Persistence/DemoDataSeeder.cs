@@ -56,5 +56,28 @@ public sealed class DemoDataSeeder
             await _dbContext.SaveChangesAsync(
                 cancellationToken);
         }
+
+        // Independent idempotency guard: must fire even if the demo project already existed
+        // from a prior seed run before this slice, otherwise the existing demo project becomes
+        // inaccessible to the demo user under the new membership-based authorization.
+        var membershipExists = await _dbContext.ProjectMembers
+            .AnyAsync(
+                member => member.ProjectId == DemoProjectId && member.UserId == DemoUserId,
+                cancellationToken);
+
+        if (!membershipExists)
+        {
+            await _dbContext.ProjectMembers.AddAsync(
+                new ProjectMember
+                {
+                    ProjectId = DemoProjectId,
+                    UserId = DemoUserId,
+                    CreatedAtUtc = DateTime.UtcNow
+                },
+                cancellationToken);
+
+            await _dbContext.SaveChangesAsync(
+                cancellationToken);
+        }
     }
 }

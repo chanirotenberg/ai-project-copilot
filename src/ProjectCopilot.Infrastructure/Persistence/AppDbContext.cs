@@ -18,6 +18,8 @@ public class AppDbContext : IdentityUserContext<ApplicationUser, Guid>
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+    public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
+
     // Enforces email uniqueness at the database level. Without this, two concurrent
     // registrations with the same email could both pass the application-level
     // RequireUniqueEmail check before either commits.
@@ -40,6 +42,17 @@ public class AppDbContext : IdentityUserContext<ApplicationUser, Guid>
                 .HasColumnType("xid")
                 .ValueGeneratedOnAddOrUpdate()
                 .IsRowVersion();
+        });
+
+        builder.Entity<ProjectMember>(entity =>
+        {
+            entity.HasKey(m => new { m.ProjectId, m.UserId });
+            entity.HasIndex(m => m.UserId);
+
+            entity.HasOne<Project>()
+                .WithMany()
+                .HasForeignKey(m => m.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
