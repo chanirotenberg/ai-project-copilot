@@ -664,7 +664,7 @@ This breakdown organizes the Phase 1 requirements above into small, independentl
 - Dependencies: Slice 1.3.
 - Risk: HIGH-RISK (Project membership / security boundary — mandatory per CLAUDE.md §13).
 - Demo/Verification: cross-project access attempt is rejected (403/404) in an HTTP test.
-- Status: NOT STARTED.
+- Status: DONE. Merged to main (commit 664ac8f), CI green.
 
 ### Slice 1.6 — Authorization Regression Tests
 - Goal: Close out negative-path coverage for authentication/authorization.
