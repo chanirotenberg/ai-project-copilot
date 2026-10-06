@@ -877,10 +877,12 @@ Current status:
 
 - Slice 1.1 — Identity Persistence: DONE
 - Slice 1.2 — Register/Login + JWT Issuance: DONE
-- Slice 1.3 — JWT Bearer Enforcement: NOT STARTED ← current active Slice
-- Slices 1.4–1.14: NOT STARTED
+- Slice 1.3 — JWT Bearer Enforcement: DONE (commit b1f73df, CI green)
+- Slice 1.4 — Refresh Token Flow: DONE (commit 5803a27, CI green)
+- Slice 1.5 — Project Membership Authorization: NOT STARTED ← current active Slice
+- Slices 1.6–1.14: NOT STARTED
 
-Slice 1.3 is HIGH-RISK.
+Slice 1.5 is HIGH-RISK.
 
 Therefore it must use the complete HIGH-RISK workflow:
 
@@ -899,7 +901,7 @@ Gatekeeper
 → Push
 → CI verification
 
-Do not start Slice 1.4 automatically.
+Do not start Slice 1.6 automatically.
 ## Agent Efficiency Rules
 
 Do not rerun completed workflow stages only because agent definitions or workflow files changed.

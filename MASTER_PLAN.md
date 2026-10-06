@@ -644,7 +644,7 @@ This breakdown organizes the Phase 1 requirements above into small, independentl
 - Dependencies: Slice 1.2.
 - Risk: HIGH-RISK (Authentication).
 - Demo/Verification: HTTP calls with and without a valid Authorization header against a protected endpoint.
-- Status: NOT STARTED.
+- Status: DONE. Merged to main (commit b1f73df), CI green.
 
 ### Slice 1.4 — Refresh Token Flow
 - Goal: Issue, store, rotate and revoke refresh tokens.
@@ -654,7 +654,7 @@ This breakdown organizes the Phase 1 requirements above into small, independentl
 - Dependencies: Slice 1.3.
 - Risk: HIGH-RISK (Refresh Tokens).
 - Demo/Verification: full refresh flow exercised via HTTP, including a rejected-reuse case.
-- Status: NOT STARTED.
+- Status: DONE. Merged to main (commit 5803a27), CI green.
 
 ### Slice 1.5 — Project Membership Authorization
 - Goal: Enforce project membership server-side on Projects/Tasks endpoints.

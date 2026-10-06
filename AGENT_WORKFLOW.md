@@ -624,13 +624,15 @@ Current status:
 
 - Slice 1.1 — Identity Persistence: DONE
 - Slice 1.2 — Register/Login + JWT Issuance: DONE
-- Slice 1.3 — JWT Bearer Enforcement: NOT STARTED ← current active Slice
-- Slices 1.4–1.14: NOT STARTED
+- Slice 1.3 — JWT Bearer Enforcement: DONE (commit b1f73df, CI green)
+- Slice 1.4 — Refresh Token Flow: DONE (commit 5803a27, CI green)
+- Slice 1.5 — Project Membership Authorization: NOT STARTED ← current active Slice
+- Slices 1.6–1.14: NOT STARTED
 
-Slice 1.3 is HIGH-RISK.
+Slice 1.5 is HIGH-RISK.
 
-Slices 1.1 and 1.2 already completed equivalent Research, Architecture, Development, Review, Fix, and QA work before the optimized workflow was introduced.
+Slices 1.1–1.4 already completed their full Gatekeeper/Researcher/Architect/Developer/Review/Fix/QA/Release cycles.
 
 Do NOT restart those stages merely to satisfy the new workflow format.
 
-Continue from the first genuinely incomplete gate for Slice 1.3 only.
+Continue from the first genuinely incomplete gate for Slice 1.5 only.
