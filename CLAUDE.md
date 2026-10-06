@@ -880,21 +880,15 @@ Current status:
 - Slice 1.3 — JWT Bearer Enforcement: DONE (commit b1f73df, CI green)
 - Slice 1.4 — Refresh Token Flow: DONE (commit 5803a27, CI green)
 - Slice 1.5 — Project Membership Authorization: DONE (commit 664ac8f, CI green)
-- Slice 1.6 — Authorization Regression Tests: NOT STARTED ← current active Slice
-- Slices 1.7–1.14: NOT STARTED
+- Slice 1.6 — Authorization Regression Tests: DONE (commit bb49d7e, CI green)
+- Slice 1.7 — Frontend Bootstrap: NOT STARTED ← current active Slice
+- Slices 1.8–1.14: NOT STARTED
 
-Slice 1.6 is NORMAL risk (test-only regression coverage; reclassify and stop if it uncovers a need to change real security behavior).
+Slice 1.7 is SMALL risk (frontend skeleton only, no feature UI, no security/schema/API-contract impact).
 
-Therefore it must use the complete HIGH-RISK workflow:
+Therefore it uses the SMALL workflow:
 
-Gatekeeper
-→ Researcher
-→ Architect
-→ Developer
-→ reviewer-logic
-→ reviewer-security
-→ reviewer-quality
-→ Fixes
+Developer
 → QA
 → Commit
 → Release Manager

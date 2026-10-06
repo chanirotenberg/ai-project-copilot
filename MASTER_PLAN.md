@@ -674,7 +674,7 @@ This breakdown organizes the Phase 1 requirements above into small, independentl
 - Dependencies: Slices 1.3–1.5.
 - Risk: NORMAL.
 - Demo/Verification: test run output showing each scenario covered.
-- Status: NOT STARTED.
+- Status: DONE. Merged to main (commit bb49d7e), CI green.
 
 ### Slice 1.7 — Frontend Bootstrap
 - Goal: Create the frontend project skeleton with no feature UI yet.
