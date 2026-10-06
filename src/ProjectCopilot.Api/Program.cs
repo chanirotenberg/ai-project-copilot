@@ -26,6 +26,21 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Development-only CORS policy so the Vite dev server (different origin)
+// can call the API. Explicit origin, no wildcard, no credentials (the
+// frontend sends tokens in the JSON body, never cookies). Has zero effect
+// outside Development: see the `UseCors` gate below.
+const string DevCorsPolicy = "DevCors";
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(DevCorsPolicy, policy =>
+        policy
+            .WithOrigins("http://localhost:5173")
+            .WithMethods("GET", "POST", "PUT")
+            .WithHeaders("Authorization", "Content-Type"));
+});
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -120,6 +135,11 @@ if (args.Contains("--seed-demo"))
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors(DevCorsPolicy);
+}
 
 app.UseAuthentication();
 app.UseAuthorization();

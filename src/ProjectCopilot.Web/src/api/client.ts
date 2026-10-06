@@ -1,10 +1,5 @@
-import { ApiError, type ApiErrorBody } from './types';
-
-/**
- * Base URL for the backend API, read from Vite env configuration.
- * Must never be hardcoded (see CLAUDE.md §17).
- */
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { getAccessToken, refreshSession } from '../auth/authClient';
+import { parseJsonResponseOrThrow, resolveApiBaseUrl } from './httpCore';
 
 export type ApiFetchOptions = Omit<RequestInit, 'body'> & {
   body?: unknown;
@@ -14,46 +9,49 @@ export type ApiFetchOptions = Omit<RequestInit, 'body'> & {
  * Generic, typed fetch helper for talking to the backend API.
  *
  * - Resolves `path` against `VITE_API_BASE_URL`.
+ * - Attaches `Authorization: Bearer <token>` when a session exists.
  * - Serializes a JSON `body` (if provided) and sets the matching header.
+ * - On a 401 from a non-auth endpoint, refreshes the session via
+ *   `authClient.refreshSession()` (the shared single-flight coordinator)
+ *   and retries the request exactly once with the new token.
  * - Parses a JSON response body (if any) as `T`.
  * - Throws `ApiError` for any non-OK (non 2xx) response.
- *
- * This slice only provides the generic helper. Endpoint-specific
- * functions (e.g. `getProjects`, `login`) are added in later slices.
  */
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  if (!API_BASE_URL) {
-    throw new Error(
-      'VITE_API_BASE_URL is not configured. Set it in your .env file (see .env.example).',
-    );
-  }
+  return performFetch<T>(path, options, false);
+}
+
+async function performFetch<T>(
+  path: string,
+  options: ApiFetchOptions,
+  isRetry: boolean,
+): Promise<T> {
+  const baseUrl = resolveApiBaseUrl();
 
   const { body, headers, ...rest } = options;
+  const accessToken = getAccessToken();
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${baseUrl}${path}`, {
     ...rest,
     headers: {
       Accept: 'application/json',
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  const contentType = response.headers.get('content-type');
-  const hasJsonBody = contentType?.includes('application/json') ?? false;
-  const parsedBody = hasJsonBody ? await response.json() : undefined;
-
-  if (!response.ok) {
-    const errorBody = parsedBody as ApiErrorBody | undefined;
-    throw new ApiError(
-      response.status,
-      errorBody?.detail ??
-        errorBody?.title ??
-        `Request to ${path} failed with status ${response.status}`,
-      errorBody,
-    );
+  // Exactly one retry, scoped to this call via the `isRetry` parameter
+  // (never a module-level/global flag). A second 401 after a
+  // successful-refresh retry falls through to the normal error path below.
+  if (response.status === 401 && !isRetry) {
+    await refreshSession();
+    return performFetch<T>(path, options, true);
   }
 
-  return parsedBody as T;
+  return parseJsonResponseOrThrow<T>(
+    response,
+    `Request to ${path} failed with status ${response.status}`,
+  );
 }
