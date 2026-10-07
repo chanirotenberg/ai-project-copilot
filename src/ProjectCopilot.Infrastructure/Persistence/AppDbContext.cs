@@ -23,6 +23,10 @@ public class AppDbContext : IdentityUserContext<ApplicationUser, Guid>
     // Enforces email uniqueness at the database level. Without this, two concurrent
     // registrations with the same email could both pass the application-level
     // RequireUniqueEmail check before either commits.
+    //
+    // Project name uniqueness (per-creator, case-insensitive, trimmed) is enforced by a
+    // PostgreSQL expression unique index, not represented in this model — see migration
+    // 20261007110426_AddProjectNameUniquePerCreator.
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder); // required — IdentityUserContext's own Identity table config runs here

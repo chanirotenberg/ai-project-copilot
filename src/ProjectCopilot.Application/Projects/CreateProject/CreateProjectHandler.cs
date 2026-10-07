@@ -4,6 +4,12 @@ using ProjectCopilot.Domain.Entities;
 
 namespace ProjectCopilot.Application.Projects.CreateProject;
 
+// KNOWN GAP (tracked, not fixed in this pass): Create Project has no idempotency protection.
+// Two truly concurrent, identical POST requests from the same user can both succeed and
+// create two separate projects (with distinct ids) - only the per-(creator, name) uniqueness
+// constraint (see migration AddProjectNameUniquePerCreator) would prevent duplicates, and only
+// when the names actually collide. If this needs fixing later, the standard approach is a
+// client-supplied idempotency-key header deduplicated server-side.
 public sealed class CreateProjectHandler
 {
     private readonly IProjectRepository _projectRepository;

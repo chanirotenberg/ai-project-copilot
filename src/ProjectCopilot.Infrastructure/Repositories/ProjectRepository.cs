@@ -1,4 +1,7 @@
+using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using ProjectCopilot.Application.Abstractions;
 using ProjectCopilot.Domain.Entities;
 using ProjectCopilot.Infrastructure.Persistence;
@@ -7,6 +10,10 @@ namespace ProjectCopilot.Infrastructure.Repositories;
 
 public class ProjectRepository : IProjectRepository
 {
+    // Must stay in sync with the raw-SQL index name in migration
+    // 20261007110426_AddProjectNameUniquePerCreator if ever renamed.
+    private const string DuplicateProjectNameConstraintName = "IX_Projects_CreatedByUserId_NormalizedName";
+
     private readonly AppDbContext _dbContext;
 
     public ProjectRepository(AppDbContext dbContext)
@@ -53,6 +60,17 @@ public class ProjectRepository : IProjectRepository
     public async Task SaveChangesAsync(
         CancellationToken cancellationToken = default)
     {
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (
+            ex.InnerException is PostgresException { SqlState: "23505", ConstraintName: DuplicateProjectNameConstraintName })
+        {
+            throw new ValidationException(new[]
+            {
+                new ValidationFailure("Name", "A project with this name already exists.")
+            });
+        }
     }
 }

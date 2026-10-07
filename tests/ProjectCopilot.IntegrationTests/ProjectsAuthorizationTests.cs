@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using ProjectCopilot.Application.Projects.CreateProject;
@@ -269,6 +270,180 @@ public class ProjectsAuthorizationTests : IClassFixture<ProjectCopilotWebApplica
         Assert.NotNull(createdProject);
         Assert.NotNull(createdProject!.Deadline);
         Assert.Equal(utcDeadline, createdProject.Deadline!.Value.ToUniversalTime());
+    }
+
+    // DB-level backstop for per-creator project name uniqueness (migration
+    // AddProjectNameUniquePerCreator). There is no application-level pre-check — this is the
+    // only thing preventing the duplicate, and it must surface as a clean 400 validation
+    // failure (via ProjectRepository.SaveChangesAsync's exact-match Postgres exception
+    // translation), never a raw 500.
+    [Fact]
+    public async Task CreateProject_WithDuplicateNameCaseAndWhitespaceInsensitive_ShouldReturnBadRequest()
+    {
+        using var client = _factory.CreateClient();
+
+        var (accessToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(client);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var firstResponse = await client.PostAsJsonAsync(
+            "/api/v1/projects",
+            new CreateProjectCommand("My Project", null, null));
+
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+
+        var secondResponse = await client.PostAsJsonAsync(
+            "/api/v1/projects",
+            new CreateProjectCommand("  my project  ", null, null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, secondResponse.StatusCode);
+
+        var problem = await secondResponse.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+
+        Assert.NotNull(problem);
+        Assert.Contains("Name", problem!.Errors.Keys);
+        Assert.Contains(
+            problem.Errors["Name"],
+            message => message.Contains("already exists", StringComparison.OrdinalIgnoreCase));
+    }
+
+    // Same name, different creators — per-creator scoping (the unique index is on
+    // (CreatedByUserId, UPPER(BTRIM(Name))), not Name alone) must allow this.
+    [Fact]
+    public async Task CreateProject_WithSameNameByDifferentUsers_ShouldBothSucceed()
+    {
+        using var clientA = _factory.CreateClient();
+        using var clientB = _factory.CreateClient();
+
+        var (accessTokenA, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(clientA);
+        var (accessTokenB, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(clientB);
+
+        clientA.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessTokenA);
+        clientB.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessTokenB);
+
+        const string sharedName = "Shared Project Name";
+
+        var responseA = await clientA.PostAsJsonAsync(
+            "/api/v1/projects",
+            new CreateProjectCommand(sharedName, null, null));
+
+        var responseB = await clientB.PostAsJsonAsync(
+            "/api/v1/projects",
+            new CreateProjectCommand(sharedName, null, null));
+
+        Assert.Equal(HttpStatusCode.Created, responseA.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, responseB.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateProject_WithYesterdayDeadline_ShouldReturnBadRequest()
+    {
+        using var client = _factory.CreateClient();
+
+        var (accessToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(client);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var yesterday = DateTime.UtcNow.Date.AddDays(-1).ToString("yyyy-MM-dd");
+        var payload = $$"""{"name":"Yesterday Deadline Project","description":null,"deadline":"{{yesterday}}"}""";
+
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        var response = await client.PostAsync("/api/v1/projects", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+
+        Assert.NotNull(problem);
+        Assert.Contains("Deadline", problem!.Errors.Keys);
+    }
+
+    // NEW behavior: deadline = today (calendar-day comparison, not instant) must now succeed
+    // — previously `deadline > DateTime.UtcNow` would have rejected any time-of-day earlier
+    // than "now", including midnight-today as sent by a native <input type="date">.
+    [Fact]
+    public async Task CreateProject_WithTodayDeadline_ShouldReturnCreated()
+    {
+        using var client = _factory.CreateClient();
+
+        var (accessToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(client);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var today = DateTime.UtcNow.Date.ToString("yyyy-MM-dd");
+        var payload = $$"""{"name":"Today Deadline Project","description":null,"deadline":"{{today}}"}""";
+
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        var response = await client.PostAsync("/api/v1/projects", content);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var createdProject = await response.Content.ReadFromJsonAsync<Project>();
+
+        Assert.NotNull(createdProject);
+        Assert.NotNull(createdProject!.Deadline);
+        Assert.Equal(DateTime.UtcNow.Date, createdProject.Deadline!.Value.ToUniversalTime().Date);
+    }
+
+    // Completes the yesterday/today/tomorrow boundary walkthrough: tomorrow must succeed just
+    // like today, since the validator rejects only strictly-past calendar dates.
+    [Fact]
+    public async Task CreateProject_WithTomorrowDeadline_ShouldReturnCreated()
+    {
+        using var client = _factory.CreateClient();
+
+        var (accessToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(client);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var tomorrow = DateTime.UtcNow.Date.AddDays(1).ToString("yyyy-MM-dd");
+        var payload = $$"""{"name":"Tomorrow Deadline Project","description":null,"deadline":"{{tomorrow}}"}""";
+
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        var response = await client.PostAsync("/api/v1/projects", content);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var createdProject = await response.Content.ReadFromJsonAsync<Project>();
+
+        Assert.NotNull(createdProject);
+        Assert.NotNull(createdProject!.Deadline);
+        Assert.Equal(DateTime.UtcNow.Date.AddDays(1), createdProject.Deadline!.Value.ToUniversalTime().Date);
+    }
+
+    // Spot-check for Item 4: FluentValidation messages must be in English regardless of
+    // host/container locale (ValidatorOptions.Global.LanguageManager.Enabled = false in
+    // Program.cs), not the Hebrew translation FluentValidation would otherwise pick based on
+    // OS/container culture.
+    [Fact]
+    public async Task CreateProject_WithEmptyName_ShouldReturnEnglishValidationMessage()
+    {
+        using var client = _factory.CreateClient();
+
+        var (accessToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(client);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/projects",
+            new CreateProjectCommand("", null, null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+
+        Assert.NotNull(problem);
+        Assert.Contains("Name", problem!.Errors.Keys);
+        var message = Assert.Single(problem.Errors["Name"]);
+        Assert.Contains("must not be empty", message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(message, c => c >= '֐' && c <= '׿'); // no Hebrew characters
     }
 
     [Fact]
