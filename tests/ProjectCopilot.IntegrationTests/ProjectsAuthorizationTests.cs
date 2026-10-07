@@ -214,4 +214,88 @@ public class ProjectsAuthorizationTests : IClassFixture<ProjectCopilotWebApplica
         Assert.Equal(userId, createdProject!.CreatedByUserId);
         Assert.NotEqual(spoofedUserId, createdProject.CreatedByUserId);
     }
+
+    [Fact]
+    public async Task CreateProject_WithDateOnlyDeadline_ShouldReturnCreatedNotInternalServerError()
+    {
+        using var client = _factory.CreateClient();
+
+        var (accessToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(client);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        // Raw JSON, deliberately NOT built from CreateProjectCommand, so that the "deadline"
+        // string is deserialized by System.Text.Json exactly the way a native HTML
+        // <input type="date"> sends it: no time component, no timezone offset. That produces
+        // a DateTime with Kind = Unspecified, which previously made Npgsql throw when writing
+        // to the "timestamp with time zone" Deadline column, surfacing as a 500.
+        const string payload = """
+            {"name":"Date-Only Deadline Project","description":null,"deadline":"2026-11-07"}
+            """;
+
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        var response = await client.PostAsync("/api/v1/projects", content);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var createdProject = await response.Content.ReadFromJsonAsync<Project>();
+
+        Assert.NotNull(createdProject);
+        Assert.NotNull(createdProject!.Deadline);
+        Assert.Equal(new DateTime(2026, 11, 7, 0, 0, 0, DateTimeKind.Utc), createdProject.Deadline!.Value.ToUniversalTime());
+    }
+
+    [Fact]
+    public async Task CreateProject_WithExplicitUtcDeadline_ShouldPersistItUnchanged()
+    {
+        using var client = _factory.CreateClient();
+
+        var (accessToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(client);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var utcDeadline = new DateTime(2026, 11, 7, 0, 0, 0, DateTimeKind.Utc);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/projects",
+            new CreateProjectCommand("Explicit UTC Deadline Project", null, utcDeadline));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var createdProject = await response.Content.ReadFromJsonAsync<Project>();
+
+        Assert.NotNull(createdProject);
+        Assert.NotNull(createdProject!.Deadline);
+        Assert.Equal(utcDeadline, createdProject.Deadline!.Value.ToUniversalTime());
+    }
+
+    [Fact]
+    public async Task CreateProject_WithLocalKindDeadline_ShouldConvertToUtcInstantNotRelabel()
+    {
+        using var client = _factory.CreateClient();
+
+        var (accessToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(client);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        // Constructed with Kind = Local so the handler's NormalizeToUtc must call
+        // .ToUniversalTime() (shifting the instant) rather than merely relabeling it as UTC.
+        var localDeadline = new DateTime(2026, 11, 7, 12, 0, 0, DateTimeKind.Local);
+        var expectedUtcInstant = localDeadline.ToUniversalTime();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/projects",
+            new CreateProjectCommand("Local Kind Deadline Project", null, localDeadline));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var createdProject = await response.Content.ReadFromJsonAsync<Project>();
+
+        Assert.NotNull(createdProject);
+        Assert.NotNull(createdProject!.Deadline);
+        Assert.Equal(expectedUtcInstant, createdProject.Deadline!.Value.ToUniversalTime());
+    }
 }
