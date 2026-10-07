@@ -48,12 +48,33 @@ public sealed class UpdateTaskHandler
         task.Status = command.Status;
         task.Priority = command.Priority;
         task.AssignedUserId = command.AssignedUserId;
-        task.DueDate = command.DueDate;
+        task.DueDate = NormalizeToUtc(command.DueDate);
         task.IsBlocked = command.IsBlocked;
         task.UpdatedAt = DateTime.UtcNow;
 
         await _taskRepository.SaveChangesAsync(cancellationToken);
 
         return task;
+    }
+
+    /// <summary>
+    /// Ensures a due date is stored with <see cref="DateTimeKind.Utc"/>, as required by the
+    /// PostgreSQL "timestamp with time zone" column. System.Text.Json deserializes a date-only
+    /// or timezone-less ISO string (e.g. "2026-11-07", as sent by an HTML &lt;input type="date"&gt;)
+    /// with Kind = Unspecified, which Npgsql rejects when writing to a timestamptz column.
+    /// </summary>
+    private static DateTime? NormalizeToUtc(DateTime? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        return value.Value.Kind switch
+        {
+            DateTimeKind.Utc => value.Value,
+            DateTimeKind.Local => value.Value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value.Value, DateTimeKind.Utc)
+        };
     }
 }
