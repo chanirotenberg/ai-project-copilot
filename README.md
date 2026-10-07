@@ -17,8 +17,17 @@ full roadmap and `CLAUDE.md` for engineering rules.
 
 - .NET SDK 10
 - Docker
+- Node.js 20
+- npm 10
 
 ## Local Setup
+
+### 0. Clone the repository
+
+```powershell
+git clone https://github.com/chanirotenberg/ai-project-copilot.git
+cd ai-project-copilot
+```
 
 ### 1. Start PostgreSQL
 
