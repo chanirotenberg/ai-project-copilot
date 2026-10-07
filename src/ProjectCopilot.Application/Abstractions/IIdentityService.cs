@@ -2,7 +2,7 @@ namespace ProjectCopilot.Application.Abstractions;
 
 public interface IIdentityService
 {
-    Task<Guid> RegisterAsync(
+    Task RegisterAsync(
         string email,
         string password,
         CancellationToken ct);

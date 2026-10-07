@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
@@ -20,51 +21,75 @@ public class AuthEndpointsTests : IClassFixture<ProjectCopilotWebApplicationFact
 
     private static string NewEmail() => $"user-{Guid.NewGuid():N}@test.local";
 
+    // Anti-enumeration contract: a successful registration returns a generic 200 OK with no
+    // userId/email echoed back (see AuthEndpoints/IdentityService.RegisterAsync). Proving a
+    // real account was actually created is done indirectly, via a subsequent successful login.
     [Fact]
-    public async Task Register_WithNewEmail_ShouldReturnCreated()
+    public async Task Register_WithNewEmail_ShouldReturnGenericAcknowledgmentAndCreateRealAccount()
     {
         using var client = _factory.CreateClient();
         var email = NewEmail();
+        const string password = "ValidPass123";
 
         var response = await client.PostAsJsonAsync(
             "/api/v1/auth/register",
-            new RegisterCommand(email, "ValidPass123"));
+            new RegisterCommand(email, password));
 
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var result = await response.Content.ReadFromJsonAsync<RegisterResult>();
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Registration request accepted.", body.GetProperty("message").GetString());
 
-        Assert.NotNull(result);
-        Assert.NotEqual(Guid.Empty, result!.UserId);
-        Assert.Equal(email, result.Email);
+        // Prove a real account was created: login with the exact submitted credentials works.
+        var loginResponse = await client.PostAsJsonAsync(
+            "/api/v1/auth/login",
+            new LoginCommand(email, password));
+
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
     }
 
-    // Regression guard for the UserName == Email invariant (now also backed by the DB
-    // unique index on NormalizedEmail): the duplicate-email failure must surface as an
-    // "Email" field validation error, not "Password" or some other field, since that's
-    // the contract the Identity-error-mapping logic in IdentityService promises to API clients.
+    // Anti-enumeration contract: registering the same email twice must return the exact same
+    // generic 200 OK response both times — nothing in the response may reveal that the second
+    // attempt collided with an existing account. Also proves only one real account exists for
+    // that email (the second attempt's password is never applied to any account).
     [Fact]
-    public async Task Register_WithDuplicateEmail_ShouldReturnBadRequestWithEmailFieldError()
+    public async Task Register_WithDuplicateEmail_ShouldReturnIdenticalGenericAcknowledgment()
     {
         using var client = _factory.CreateClient();
         var email = NewEmail();
+        const string originalPassword = "ValidPass123";
+        const string secondAttemptPassword = "DifferentPass456";
 
         var firstResponse = await client.PostAsJsonAsync(
             "/api/v1/auth/register",
-            new RegisterCommand(email, "ValidPass123"));
+            new RegisterCommand(email, originalPassword));
 
-        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+        var firstBody = await firstResponse.Content.ReadAsStringAsync();
 
         var secondResponse = await client.PostAsJsonAsync(
             "/api/v1/auth/register",
-            new RegisterCommand(email, "ValidPass123"));
+            new RegisterCommand(email, secondAttemptPassword));
 
-        Assert.Equal(HttpStatusCode.BadRequest, secondResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, secondResponse.StatusCode);
+        var secondBody = await secondResponse.Content.ReadAsStringAsync();
 
-        var problem = await secondResponse.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        // Byte-for-byte identical: same status code, same raw response body string - not just a
+        // structurally-equal-ish comparison of one field.
+        Assert.Equal(firstResponse.StatusCode, secondResponse.StatusCode);
+        Assert.Equal(firstBody, secondBody);
 
-        Assert.NotNull(problem);
-        Assert.Contains("Email", problem!.Errors.Keys);
+        // Only one real account exists: the original password still works...
+        var loginWithOriginalPassword = await client.PostAsJsonAsync(
+            "/api/v1/auth/login",
+            new LoginCommand(email, originalPassword));
+        Assert.Equal(HttpStatusCode.OK, loginWithOriginalPassword.StatusCode);
+
+        // ...and the second attempt's password was never applied to any account.
+        var loginWithSecondAttemptPassword = await client.PostAsJsonAsync(
+            "/api/v1/auth/login",
+            new LoginCommand(email, secondAttemptPassword));
+        Assert.Equal(HttpStatusCode.Unauthorized, loginWithSecondAttemptPassword.StatusCode);
     }
 
     [Fact]
@@ -80,6 +105,48 @@ public class AuthEndpointsTests : IClassFixture<ProjectCopilotWebApplicationFact
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    // Anti-enumeration contract, weak-password branch: UserManager.CreateAsync's
+    // UpdatePasswordHash validates password strength BEFORE it ever reaches the email-uniqueness
+    // check (see IdentityService.RegisterAsync), so for a given weak password the code path never
+    // depends on whether the submitted email already exists - the uniqueness check is never
+    // reached at all in that branch. The real security property this proves is not "duplicate
+    // email always returns the generic 200" (that only holds on the strong-password branch,
+    // asserted separately below) - it is "the response never depends on email existence, for a
+    // given password." This test proves that directly by comparing full responses (status + raw
+    // body), not just a status code or a single field, for a brand-new email vs. an
+    // already-registered email, both using the exact same weak password.
+    [Fact]
+    public async Task Register_WithWeakPassword_ShouldReturnIdenticalResponseForNewAndDuplicateEmail()
+    {
+        using var client = _factory.CreateClient();
+        const string weakPassword = "short";
+
+        // Brand-new email, weak password.
+        var newEmail = NewEmail();
+        var newEmailResponse = await client.PostAsJsonAsync(
+            "/api/v1/auth/register",
+            new RegisterCommand(newEmail, weakPassword));
+        var newEmailBody = await newEmailResponse.Content.ReadAsStringAsync();
+
+        // Already-registered email (registered first with a strong password so a real account
+        // exists), then a duplicate attempt using the exact same weak password as above.
+        var duplicateEmail = NewEmail();
+        const string strongPassword = "ValidPass123";
+        var firstRegisterResponse = await client.PostAsJsonAsync(
+            "/api/v1/auth/register",
+            new RegisterCommand(duplicateEmail, strongPassword));
+        Assert.Equal(HttpStatusCode.OK, firstRegisterResponse.StatusCode);
+
+        var duplicateEmailResponse = await client.PostAsJsonAsync(
+            "/api/v1/auth/register",
+            new RegisterCommand(duplicateEmail, weakPassword));
+        var duplicateEmailBody = await duplicateEmailResponse.Content.ReadAsStringAsync();
+
+        // Byte-for-byte identical: same status code, same raw response body string.
+        Assert.Equal(newEmailResponse.StatusCode, duplicateEmailResponse.StatusCode);
+        Assert.Equal(newEmailBody, duplicateEmailBody);
+    }
+
     [Fact]
     public async Task Login_WithCorrectCredentials_ShouldReturnValidToken()
     {
@@ -91,7 +158,7 @@ public class AuthEndpointsTests : IClassFixture<ProjectCopilotWebApplicationFact
             "/api/v1/auth/register",
             new RegisterCommand(email, password));
 
-        Assert.Equal(HttpStatusCode.Created, registerResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, registerResponse.StatusCode);
 
         var loginResponse = await client.PostAsJsonAsync(
             "/api/v1/auth/login",
@@ -141,7 +208,7 @@ public class AuthEndpointsTests : IClassFixture<ProjectCopilotWebApplicationFact
             "/api/v1/auth/register",
             new RegisterCommand(email, "ValidPass123"));
 
-        Assert.Equal(HttpStatusCode.Created, registerResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, registerResponse.StatusCode);
 
         var loginResponse = await client.PostAsJsonAsync(
             "/api/v1/auth/login",
@@ -175,7 +242,7 @@ public class AuthEndpointsTests : IClassFixture<ProjectCopilotWebApplicationFact
             "/api/v1/auth/register",
             new RegisterCommand(email, "ValidPass123"));
 
-        Assert.Equal(HttpStatusCode.Created, registerResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, registerResponse.StatusCode);
 
         var wrongPasswordResponse = await client.PostAsJsonAsync(
             "/api/v1/auth/login",

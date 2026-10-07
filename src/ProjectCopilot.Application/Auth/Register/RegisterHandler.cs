@@ -16,17 +16,15 @@ public sealed class RegisterHandler
         _validator = validator;
     }
 
-    public async Task<RegisterResult> HandleAsync(
+    public async Task HandleAsync(
         RegisterCommand command,
         CancellationToken cancellationToken = default)
     {
         await _validator.ValidateAndThrowAsync(command, cancellationToken);
 
-        var userId = await _identityService.RegisterAsync(
+        await _identityService.RegisterAsync(
             command.Email,
             command.Password,
             cancellationToken);
-
-        return new RegisterResult(userId, command.Email);
     }
 }

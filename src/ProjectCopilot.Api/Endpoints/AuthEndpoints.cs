@@ -15,13 +15,14 @@ public static class AuthEndpoints
             RegisterHandler handler,
             CancellationToken cancellationToken) =>
         {
-            var result = await handler.HandleAsync(command, cancellationToken);
+            // Anti-enumeration by design: a genuine new-account success and a duplicate-email
+            // attempt both return this exact same 200 OK response with no distinguishing detail
+            // (no userId/email echoed back) — see IdentityService.RegisterAsync. A thrown
+            // ValidationException (genuine format/strength failure) still flows to the existing
+            // 400 path via ExceptionHandlingMiddleware.
+            await handler.HandleAsync(command, cancellationToken);
 
-            // Location is symbolic — no GET /api/v1/auth/users/{id} endpoint exists yet to
-            // resolve it. Still returning 201/Created since a resource was in fact created.
-            return Results.Created(
-                $"/api/v1/auth/users/{result.UserId}",
-                result);
+            return Results.Ok(new { message = "Registration request accepted." });
         });
 
         group.MapPost("/login", async (

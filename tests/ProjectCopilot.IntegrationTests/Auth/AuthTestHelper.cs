@@ -24,7 +24,7 @@ public static class AuthTestHelper
             "/api/v1/auth/register",
             new RegisterCommand(email, password));
 
-        if (registerResponse.StatusCode != HttpStatusCode.Created)
+        if (registerResponse.StatusCode != HttpStatusCode.OK)
         {
             throw new InvalidOperationException(
                 $"AuthTestHelper setup failed: register returned {registerResponse.StatusCode}.");

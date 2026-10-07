@@ -46,39 +46,40 @@ public sealed class IdentityService : IIdentityService
         }
     }
 
-    public async Task<Guid> RegisterAsync(
+    // KNOWN GAP (tracked, not fixed here): a true race between two concurrent registration
+    // requests for the same email can collide at the DB-level unique constraint on AspNetUsers
+    // after both pass Identity's in-memory uniqueness pre-check. The losing request's
+    // DbUpdateException is currently unhandled here and surfaces as a 500, not the intended
+    // generic 200 - a narrow exception to the anti-enumeration guarantee in that race window.
+    // Pre-existing pattern, not introduced by this pass.
+    public async Task RegisterAsync(
         string email,
         string password,
         CancellationToken ct)
     {
-        var user = new ApplicationUser
-        {
-            UserName = email,
-            Email = email
-        };
-
+        var user = new ApplicationUser { UserName = email, Email = email };
         var result = await _userManager.CreateAsync(user, password);
 
-        if (!result.Succeeded)
-        {
-            // Deliberately reusing FluentValidation.ValidationException here (not a layering
-            // accident) so this failure flows through the existing 400 path in
-            // ExceptionHandlingMiddleware instead of requiring a new exception type.
-            // Any IdentityError.Code that isn't an Email/UserName duplicate is mapped to
-            // "Password" as a deliberate simplification, since those are the only error
-            // codes CreateAsync currently produces (e.g. weak-password rules).
-            var failures = result.Errors
-                .Select(error => new ValidationFailure(
-                    error.Code.Contains("Email") || error.Code.Contains("UserName")
-                        ? "Email"
-                        : "Password",
-                    error.Description))
-                .ToList();
+        if (result.Succeeded) return; // real account created
 
-            throw new ValidationException(failures);
+        var isDuplicateOnly = result.Errors.All(e => e.Code is "DuplicateUserName" or "DuplicateEmail");
+        if (isDuplicateOnly)
+        {
+            // Anti-enumeration: no additional dummy password hash is added here. UserManager
+            // .CreateAsync always hashes the password (inside UpdatePasswordHash) BEFORE running
+            // uniqueness validation, regardless of outcome - confirmed by reading its actual call
+            // order. So this duplicate-email path already pays the same hashing cost as a real
+            // success; adding a second hash here would double it on THIS path specifically and
+            // reverse the timing signal this comment exists to avoid. This is a genuine silent
+            // no-op: CreateAsync already failed internally, no user row was inserted, nothing
+            // further to do.
+            return;
         }
 
-        return user.Id;
+        // Genuine format/strength failures - not an enumeration signal, reported normally,
+        // identical whether the submitted email is new or already registered.
+        throw new ValidationException(result.Errors.Select(e =>
+            new ValidationFailure("Password", e.Description)));
     }
 
     public async Task<(Guid UserId, string Email)> ValidateCredentialsAsync(
