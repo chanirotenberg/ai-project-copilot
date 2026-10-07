@@ -54,6 +54,22 @@ describe('ProjectsPage', () => {
     expect(await screen.findByText('Demo Project')).toBeInTheDocument();
   });
 
+  it('renders a project deadline as DD/MM/YYYY regardless of the raw ISO format', async () => {
+    const projectWithDeadline: Project = {
+      ...sampleProject,
+      id: 'project-2',
+      name: 'Deadline Project',
+      deadline: '2026-11-07T00:00:00Z',
+    };
+    (fetch as Mock).mockResolvedValueOnce(fakeResponse(200, [projectWithDeadline]));
+
+    renderProjectsPage();
+
+    expect(await screen.findByText('Deadline Project')).toBeInTheDocument();
+    expect(screen.getByText(/\(due 07\/11\/2026\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/2026-11-07T00:00:00Z/)).not.toBeInTheDocument();
+  });
+
   it('shows a loading indicator while the projects query is pending', async () => {
     let resolveFetch!: (value: Response) => void;
     (fetch as Mock).mockReturnValueOnce(

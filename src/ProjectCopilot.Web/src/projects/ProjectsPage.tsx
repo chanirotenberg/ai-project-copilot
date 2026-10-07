@@ -7,6 +7,21 @@ const GENERIC_CREATE_ERROR = 'Unable to create project. Please try again.';
 const GENERIC_LOAD_ERROR = 'Unable to load projects. Please try again.';
 
 /**
+ * Formats an ISO deadline as DD/MM/YYYY, always, regardless of browser locale.
+ *
+ * Uses UTC getters (not local getters) deliberately: the deadline represents a calendar
+ * day, not a precise instant, and local-timezone getters could shift the displayed day
+ * depending on the viewer's timezone offset relative to the stored UTC-midnight value.
+ */
+function formatDeadline(iso: string): string {
+  const d = new Date(iso);
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = d.getUTCFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+/**
  * Projects screen (Slice 1.9): real list + create, against the real API.
  *
  * Only data the backend returns is shown (no client-side filtering/faking).
@@ -124,7 +139,7 @@ export function ProjectsPage() {
             {projectsQuery.data.map((project) => (
               <li key={project.id}>
                 <strong>{project.name}</strong> — {project.status}
-                {project.deadline ? <span> (due {project.deadline})</span> : null}
+                {project.deadline ? <span> (due {formatDeadline(project.deadline)})</span> : null}
               </li>
             ))}
           </ul>
