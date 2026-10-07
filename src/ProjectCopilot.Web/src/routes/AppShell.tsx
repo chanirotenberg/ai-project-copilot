@@ -1,14 +1,34 @@
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/useAuth';
+import { ProjectsPage } from '../projects/ProjectsPage';
+
 /**
- * Minimal root shell rendered at `/`.
+ * Root shell rendered at `/` (inside `ProtectedRoute`).
  *
- * This is a scaffolding placeholder only (Slice 1.7). Real screens
- * (Login, Projects, Dashboard, Tasks, Documents, ...) are added in
- * later slices.
+ * Slice 1.9 adds the first real feature screen (Projects) plus a minimal
+ * header with a working Logout control. Further screens (Dashboard, Tasks,
+ * Documents, ...) are added in later slices.
  */
 export function AppShell() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    logout();
+    navigate('/login', { replace: true });
+  }
+
   return (
-    <main>
-      <h1>AI Project Copilot</h1>
-    </main>
+    <div>
+      <header>
+        <h1>AI Project Copilot</h1>
+        <button type="button" onClick={handleLogout}>
+          Logout
+        </button>
+      </header>
+      <main>
+        <ProjectsPage />
+      </main>
+    </div>
   );
 }
