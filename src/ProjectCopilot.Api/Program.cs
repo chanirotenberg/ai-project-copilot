@@ -26,6 +26,10 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Pins all FluentValidation built-in messages to English regardless of host/container
+// locale, fixing a Hebrew/English mix found in QA.
+FluentValidation.ValidatorOptions.Global.LanguageManager.Enabled = false;
+
 // Development-only CORS policy so the Vite dev server (different origin)
 // can call the API. Explicit origin, no wildcard, no credentials (the
 // frontend sends tokens in the JSON body, never cookies). Has zero effect
