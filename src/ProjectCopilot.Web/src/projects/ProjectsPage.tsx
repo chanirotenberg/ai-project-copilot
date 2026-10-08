@@ -1,25 +1,12 @@
 import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { ApiError } from '../api/types';
+import { formatDeadline } from './formatDeadline';
 import { useCreateProject } from './useCreateProject';
 import { useProjects } from './useProjects';
 
 const GENERIC_CREATE_ERROR = 'Unable to create project. Please try again.';
 const GENERIC_LOAD_ERROR = 'Unable to load projects. Please try again.';
-
-/**
- * Formats an ISO deadline as DD/MM/YYYY, always, regardless of browser locale.
- *
- * Uses UTC getters (not local getters) deliberately: the deadline represents a calendar
- * day, not a precise instant, and local-timezone getters could shift the displayed day
- * depending on the viewer's timezone offset relative to the stored UTC-midnight value.
- */
-function formatDeadline(iso: string): string {
-  const d = new Date(iso);
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const yyyy = d.getUTCFullYear();
-  return `${dd}/${mm}/${yyyy}`;
-}
 
 const CREATE_PROJECT_FIELDS = ['Name', 'Description', 'Deadline'] as const;
 
@@ -199,8 +186,10 @@ export function ProjectsPage() {
           <ul>
             {projectsQuery.data.map((project) => (
               <li key={project.id}>
-                <strong>{project.name}</strong> — {project.status}
-                {project.deadline ? <span> (due {formatDeadline(project.deadline)})</span> : null}
+                <Link to={`/projects/${project.id}`}>
+                  <strong>{project.name}</strong> — {project.status}
+                  {project.deadline ? <span> (due {formatDeadline(project.deadline)})</span> : null}
+                </Link>
               </li>
             ))}
           </ul>

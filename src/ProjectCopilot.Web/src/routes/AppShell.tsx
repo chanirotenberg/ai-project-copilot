@@ -1,13 +1,11 @@
-import { useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
-import { ProjectsPage } from '../projects/ProjectsPage';
 
 /**
- * Root shell rendered at `/` (inside `ProtectedRoute`).
- *
- * Slice 1.9 adds the first real feature screen (Projects) plus a minimal
- * header with a working Logout control. Further screens (Dashboard, Tasks,
- * Documents, ...) are added in later slices.
+ * Root shell rendered inside `ProtectedRoute`, hosting the header/Logout and an
+ * `<Outlet/>` for whichever feature route is active (`/` = Projects list,
+ * `/projects/:projectId` = Project Dashboard, ...). Further screens (Tasks,
+ * Documents, ...) are added in later slices as additional sibling routes.
  */
 export function AppShell() {
   const { logout } = useAuth();
@@ -27,7 +25,7 @@ export function AppShell() {
         </button>
       </header>
       <main>
-        <ProjectsPage />
+        <Outlet />
       </main>
     </div>
   );

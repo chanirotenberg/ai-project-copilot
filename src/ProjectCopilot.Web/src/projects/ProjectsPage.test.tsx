@@ -1,5 +1,6 @@
 import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { fakeResponse } from '../test/fakeResponse';
 import { ProjectsPage } from './ProjectsPage';
@@ -26,9 +27,21 @@ function renderProjectsPage() {
     },
   });
 
+  // ProjectsPage renders a react-router <Link>, so it needs a Router context even in
+  // tests that don't care about navigation. The `/projects/:projectId` route is a plain
+  // stub (not the real ProjectDashboardPage) - this file only tests that ProjectsPage
+  // navigates there, not what the dashboard itself renders (see ProjectDashboardPage.test.tsx).
   render(
     <QueryClientProvider client={queryClient}>
-      <ProjectsPage />
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="/" element={<ProjectsPage />} />
+          <Route
+            path="/projects/:projectId"
+            element={<p data-testid="dashboard-stub">Project Dashboard Stub</p>}
+          />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -68,6 +81,19 @@ describe('ProjectsPage', () => {
     expect(await screen.findByText('Deadline Project')).toBeInTheDocument();
     expect(screen.getByText(/\(due 07\/11\/2026\)/)).toBeInTheDocument();
     expect(screen.queryByText(/2026-11-07T00:00:00Z/)).not.toBeInTheDocument();
+  });
+
+  it('navigates to /projects/{id} when a project is clicked', async () => {
+    (fetch as Mock).mockResolvedValueOnce(fakeResponse(200, [sampleProject]));
+
+    renderProjectsPage();
+
+    const link = await screen.findByRole('link', { name: /Demo Project/i });
+    expect(link).toHaveAttribute('href', '/projects/project-1');
+
+    fireEvent.click(link);
+
+    expect(await screen.findByTestId('dashboard-stub')).toBeInTheDocument();
   });
 
   it('shows a loading indicator while the projects query is pending', async () => {
