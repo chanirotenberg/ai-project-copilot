@@ -21,6 +21,71 @@ function formatDeadline(iso: string): string {
   return `${dd}/${mm}/${yyyy}`;
 }
 
+const CREATE_PROJECT_FIELDS = ['Name', 'Description', 'Deadline'] as const;
+
+/**
+ * Maps a known backend validation message for one Create Project field to a
+ * clearer, user-facing message. Matched by substring (not exact string) so a
+ * minor backend wording change doesn't silently break the mapping - it just
+ * falls through to the raw backend message instead (see
+ * `getCreateProjectErrorMessage`'s fallback).
+ *
+ * Deliberately narrow: only the Create Project fields/messages that exist
+ * today. Not a general validation-translation framework - no i18n
+ * infrastructure, no generic 401/404/500 handling here by design.
+ */
+function toFriendlyFieldMessage(field: string, rawMessage: string): string | undefined {
+  switch (field) {
+    case 'Deadline':
+      // Backend: "Deadline must not be before today."
+      return "You can't choose a date in the past.";
+    case 'Name':
+      if (/must not be empty/i.test(rawMessage)) {
+        return 'Project name is required.';
+      }
+      if (/200 characters/i.test(rawMessage)) {
+        return 'Project name must be 200 characters or fewer.';
+      }
+      if (/already exists/i.test(rawMessage)) {
+        // Already clear as written by the backend - pass it through verbatim
+        // rather than inventing a reworded version that could drift from it.
+        return rawMessage;
+      }
+      return undefined;
+    case 'Description':
+      if (/2000 characters/i.test(rawMessage)) {
+        return 'Description must be 2000 characters or fewer.';
+      }
+      return undefined;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Resolves the message to show for a failed Create Project submission.
+ *
+ * Prefers a friendly message for a known Create-Project field error (read
+ * from the backend's ValidationProblemDetails `errors` map, preserved on
+ * `ApiError.body`). Falls back to the raw `detail`/`title`-derived
+ * `ApiError.message` when there's no field-level error to map (e.g. a
+ * generic 500, or a validation message this function doesn't recognize) -
+ * this is the same fallback behavior as before this change, not a new gap.
+ */
+function getCreateProjectErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && error.body?.errors) {
+    for (const field of CREATE_PROJECT_FIELDS) {
+      const messages = error.body.errors[field];
+      const friendly = messages?.[0] ? toFriendlyFieldMessage(field, messages[0]) : undefined;
+      if (friendly) {
+        return friendly;
+      }
+    }
+  }
+
+  return error instanceof ApiError ? error.message : GENERIC_CREATE_ERROR;
+}
+
 /**
  * Projects screen (Slice 1.9): real list + create, against the real API.
  *
@@ -109,11 +174,7 @@ export function ProjectsPage() {
 
         {validationError ? <p role="alert">{validationError}</p> : null}
         {createProjectMutation.isError ? (
-          <p role="alert">
-            {createProjectMutation.error instanceof ApiError
-              ? createProjectMutation.error.message
-              : GENERIC_CREATE_ERROR}
-          </p>
+          <p role="alert">{getCreateProjectErrorMessage(createProjectMutation.error)}</p>
         ) : null}
 
         <button type="submit" disabled={createProjectMutation.isPending}>

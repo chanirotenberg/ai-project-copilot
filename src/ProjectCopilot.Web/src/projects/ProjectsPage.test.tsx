@@ -156,6 +156,74 @@ describe('ProjectsPage', () => {
     expect(screen.getByRole('button', { name: /create project/i })).toBeInTheDocument();
   });
 
+  it('shows a friendly message for a backend Deadline validation error, not "Validation failed."', async () => {
+    (fetch as Mock)
+      .mockResolvedValueOnce(fakeResponse(200, [])) // initial list
+      .mockResolvedValueOnce(
+        fakeResponse(400, {
+          title: 'Validation failed.',
+          status: 400,
+          errors: { Deadline: ['Deadline must not be before today.'] },
+        }),
+      );
+
+    renderProjectsPage();
+    await screen.findByText(/no projects yet/i);
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Demo Project' } });
+    fireEvent.click(screen.getByRole('button', { name: /create project/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent("You can't choose a date in the past.");
+    expect(alert).not.toHaveTextContent('Validation failed.');
+  });
+
+  it('shows a friendly message for a backend Name validation error (duplicate name)', async () => {
+    (fetch as Mock)
+      .mockResolvedValueOnce(fakeResponse(200, [])) // initial list
+      .mockResolvedValueOnce(
+        fakeResponse(400, {
+          title: 'Validation failed.',
+          status: 400,
+          errors: { Name: ['A project with this name already exists.'] },
+        }),
+      );
+
+    renderProjectsPage();
+    await screen.findByText(/no projects yet/i);
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Demo Project' } });
+    fireEvent.click(screen.getByRole('button', { name: /create project/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('A project with this name already exists.');
+    expect(alert).not.toHaveTextContent('Validation failed.');
+  });
+
+  it('shows a friendly message for a backend Description validation error', async () => {
+    (fetch as Mock)
+      .mockResolvedValueOnce(fakeResponse(200, [])) // initial list
+      .mockResolvedValueOnce(
+        fakeResponse(400, {
+          title: 'Validation failed.',
+          status: 400,
+          errors: {
+            Description: ["The length of 'Description' must be 2000 characters or fewer."],
+          },
+        }),
+      );
+
+    renderProjectsPage();
+    await screen.findByText(/no projects yet/i);
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Demo Project' } });
+    fireEvent.click(screen.getByRole('button', { name: /create project/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Description must be 2000 characters or fewer.');
+    expect(alert).not.toHaveTextContent('Validation failed.');
+  });
+
   it('clears a stale server-side error once a new client-side validation error replaces it', async () => {
     (fetch as Mock)
       .mockResolvedValueOnce(fakeResponse(200, [])) // initial list
