@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 import { ApiError } from '../api/types';
-import { formatDeadline } from './formatDeadline';
+import { TasksSection } from '../tasks/TasksSection';
+import { formatDate } from './formatDate';
 import { useProject } from './useProject';
 
 const GENERIC_LOAD_ERROR = 'Unable to load project. Please try again.';
@@ -11,8 +12,9 @@ const GENERIC_LOAD_ERROR = 'Unable to load project. Please try again.';
 const NOT_FOUND_MESSAGE = 'Project not found or unavailable.';
 
 /**
- * Project Dashboard (Slice 1.10): real project detail for a single project, by id
- * from the route. Read-only - no edit/delete/members/tasks UI here (later slices).
+ * Project Dashboard (Slice 1.10/1.11): project detail for a single project, by id
+ * from the route, plus its Tasks section. Project fields themselves are read-only
+ * here (no edit/delete/members UI - later slices).
  */
 export function ProjectDashboardPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -42,9 +44,7 @@ export function ProjectDashboardPage() {
           <p>Status: {projectQuery.data.status}</p>
           <p>
             Deadline:{' '}
-            {projectQuery.data.deadline
-              ? formatDeadline(projectQuery.data.deadline)
-              : 'No deadline'}
+            {projectQuery.data.deadline ? formatDate(projectQuery.data.deadline) : 'No deadline'}
           </p>
           <p>
             {projectQuery.data.description
@@ -53,6 +53,8 @@ export function ProjectDashboardPage() {
           </p>
         </article>
       ) : null}
+
+      {projectQuery.data ? <TasksSection projectId={projectId!} /> : null}
     </section>
   );
 }

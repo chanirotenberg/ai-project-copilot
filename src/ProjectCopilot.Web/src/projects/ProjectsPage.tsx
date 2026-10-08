@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError } from '../api/types';
-import { formatDeadline } from './formatDeadline';
+import { formatDate } from './formatDate';
 import { useCreateProject } from './useCreateProject';
 import { useProjects } from './useProjects';
 
@@ -188,7 +188,7 @@ export function ProjectsPage() {
               <li key={project.id}>
                 <Link to={`/projects/${project.id}`}>
                   <strong>{project.name}</strong> — {project.status}
-                  {project.deadline ? <span> (due {formatDeadline(project.deadline)})</span> : null}
+                  {project.deadline ? <span> (due {formatDate(project.deadline)})</span> : null}
                 </Link>
               </li>
             ))}
