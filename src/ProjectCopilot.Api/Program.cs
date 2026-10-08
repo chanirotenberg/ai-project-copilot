@@ -51,7 +51,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
     {
-        options.Password.RequiredLength = 8;
+        // Relaxed password policy: favors passphrase length over composition-rule UX friction.
+        // Only affects future registrations/password changes - existing password hashes are
+        // never re-validated against this policy (login only compares hashes).
+        options.Password.RequiredLength = 10;
+        options.Password.RequireDigit = true;
+        options.Password.RequireLowercase = true;
+        options.Password.RequireUppercase = false;
         options.Password.RequireNonAlphanumeric = false;
         options.User.RequireUniqueEmail = true;
     })

@@ -65,6 +65,34 @@ public class RegisterValidatorTests
     }
 
     [Fact]
+    public async Task ValidateAsync_WhenPasswordIsNineChars_ShouldFail()
+    {
+        var validator = new RegisterValidator();
+
+        // 9 chars - one below the RequiredLength=10 threshold this validator is kept in sync with.
+        var command = new RegisterCommand("user@test.local", "abcdefg12");
+
+        var result = await validator.ValidateAsync(command);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(
+            result.Errors,
+            error => error.PropertyName == nameof(RegisterCommand.Password));
+    }
+
+    [Fact]
+    public async Task ValidateAsync_WhenPasswordIsExactlyTenChars_ShouldPass()
+    {
+        var validator = new RegisterValidator();
+
+        var command = new RegisterCommand("user@test.local", "abcdefgh12");
+
+        var result = await validator.ValidateAsync(command);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
     public async Task ValidateAsync_WhenCommandIsValid_ShouldPass()
     {
         var validator = new RegisterValidator();

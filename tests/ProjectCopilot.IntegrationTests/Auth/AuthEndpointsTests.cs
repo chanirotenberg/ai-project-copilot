@@ -147,6 +147,88 @@ public class AuthEndpointsTests : IClassFixture<ProjectCopilotWebApplicationFact
         Assert.Equal(newEmailBody, duplicateEmailBody);
     }
 
+    // Password policy (Program.cs AddIdentityCore): RequiredLength=10, RequireDigit=true,
+    // RequireLowercase=true, RequireUppercase=false, RequireNonAlphanumeric=false. These
+    // exercise Identity's own character-class enforcement directly - FluentValidation's
+    // RegisterValidator only checks length, not composition, so these must be integration-level.
+
+    [Fact]
+    public async Task Register_WithPasswordUnderTenChars_ShouldReturnBadRequest()
+    {
+        using var client = _factory.CreateClient();
+
+        // 9 chars, otherwise valid (lowercase + digit) - isolates the length rule specifically.
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/auth/register",
+            new RegisterCommand(NewEmail(), "abcdefg12"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_WithTenCharsLowercaseAndDigit_ShouldSucceed()
+    {
+        using var client = _factory.CreateClient();
+
+        // Exactly 10 chars, lowercase + digit, no uppercase, no special character.
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/auth/register",
+            new RegisterCommand(NewEmail(), "abcdefgh12"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_WithoutUppercase_ShouldStillSucceed()
+    {
+        using var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/auth/register",
+            new RegisterCommand(NewEmail(), "nouppercase1"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_WithoutSpecialCharacter_ShouldStillSucceed()
+    {
+        using var client = _factory.CreateClient();
+
+        // Plain alphanumeric, no special/non-alphanumeric character at all.
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/auth/register",
+            new RegisterCommand(NewEmail(), "plainalnum1"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_WithoutDigit_ShouldReturnBadRequest()
+    {
+        using var client = _factory.CreateClient();
+
+        // 10+ chars, lowercase only, no digit.
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/auth/register",
+            new RegisterCommand(NewEmail(), "nodigitsatall"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_WithoutLowercase_ShouldReturnBadRequest()
+    {
+        using var client = _factory.CreateClient();
+
+        // 10+ chars, uppercase + digit, no lowercase at all.
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/auth/register",
+            new RegisterCommand(NewEmail(), "NOLOWERCASE1"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task Login_WithCorrectCredentials_ShouldReturnValidToken()
     {
