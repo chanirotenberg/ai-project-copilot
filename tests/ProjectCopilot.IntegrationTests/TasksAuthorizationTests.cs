@@ -219,6 +219,60 @@ public class TasksAuthorizationTests : IClassFixture<ProjectCopilotWebApplicatio
     }
 
     [Fact]
+    public async Task CreateTask_WithYesterdayDueDate_ShouldReturnBadRequest()
+    {
+        using var client = _factory.CreateClient();
+
+        var projectId = await RegisterLoginAndCreateProjectAsync(client, "Yesterday DueDate Project");
+        var yesterday = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd");
+
+        var payload = $$"""
+            {"projectId":"{{projectId}}","title":"Yesterday DueDate Task","description":null,"priority":"Medium","assignedUserId":null,"dueDate":"{{yesterday}}"}
+            """;
+
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        var response = await client.PostAsync("/api/v1/tasks", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateTask_WithTodayDueDate_ShouldReturnCreated()
+    {
+        using var client = _factory.CreateClient();
+
+        var projectId = await RegisterLoginAndCreateProjectAsync(client, "Today DueDate Project");
+        var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+
+        var payload = $$"""
+            {"projectId":"{{projectId}}","title":"Today DueDate Task","description":null,"priority":"Medium","assignedUserId":null,"dueDate":"{{today}}"}
+            """;
+
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        var response = await client.PostAsync("/api/v1/tasks", content);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateTask_WithTomorrowDueDate_ShouldReturnCreated()
+    {
+        using var client = _factory.CreateClient();
+
+        var projectId = await RegisterLoginAndCreateProjectAsync(client, "Tomorrow DueDate Project");
+        var tomorrow = DateTime.UtcNow.AddDays(1).ToString("yyyy-MM-dd");
+
+        var payload = $$"""
+            {"projectId":"{{projectId}}","title":"Tomorrow DueDate Task","description":null,"priority":"Medium","assignedUserId":null,"dueDate":"{{tomorrow}}"}
+            """;
+
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        var response = await client.PostAsync("/api/v1/tasks", content);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
     public async Task CreateTask_WithDateOnlyDueDate_ShouldReturnCreatedNotInternalServerError()
     {
         using var client = _factory.CreateClient();

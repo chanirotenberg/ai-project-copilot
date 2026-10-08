@@ -29,8 +29,11 @@ public sealed class CreateTaskValidator : AbstractValidator<CreateTaskCommand>
             .Must(priority => AllowedPriorities.Contains(priority))
             .WithMessage("Priority must be one of: Low, Medium, High, Critical.");
 
+        // Calendar-day comparison (not instant), matching Project.Deadline's approved
+        // semantics: a date-only "today" due date (as a native <input type="date"> sends)
+        // is allowed; only a genuinely past date is rejected.
         RuleFor(x => x.DueDate)
-            .Must(dueDate => dueDate is null || dueDate.Value > DateTime.UtcNow)
-            .WithMessage("Due date must be in the future.");
+            .Must(dueDate => dueDate is null || dueDate.Value.Date >= DateTime.UtcNow.Date)
+            .WithMessage("Due date must not be before today.");
     }
 }
