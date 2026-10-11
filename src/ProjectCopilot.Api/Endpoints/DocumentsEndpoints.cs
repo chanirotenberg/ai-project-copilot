@@ -45,7 +45,10 @@ public static class DocumentsEndpoints
 
             if (document is null)
             {
-                throw new NotFoundException($"Document with id '{id}' was not found.");
+                // Must stay textually identical to the membership-check 404 below (and to the
+                // generic NotFoundException.HiddenResource() message) — see TasksEndpoints for
+                // the same pattern/rationale.
+                throw NotFoundException.HiddenResource();
             }
 
             await membershipService.EnsureMemberAsync(
@@ -102,7 +105,9 @@ public static class DocumentsEndpoints
 
             if (document is null)
             {
-                throw new NotFoundException($"Document with id '{id}' was not found.");
+                // Must stay textually identical to the membership-check 404 below — same
+                // indistinguishability rationale as the GET endpoint above.
+                throw NotFoundException.HiddenResource();
             }
 
             await membershipService.EnsureMemberAsync(

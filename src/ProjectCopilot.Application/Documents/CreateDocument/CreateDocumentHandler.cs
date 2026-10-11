@@ -37,8 +37,10 @@ public sealed class CreateDocumentHandler
 
         if (project is null)
         {
-            throw new NotFoundException(
-                $"Project with id '{command.ProjectId}' was not found.");
+            // Must stay textually identical to the membership-check 404 below — otherwise a
+            // caller probing command.ProjectId values could tell "doesn't exist" apart from
+            // "exists but you're not a member" purely from the response body text.
+            throw NotFoundException.HiddenResource();
         }
 
         await _membershipService.EnsureMemberAsync(

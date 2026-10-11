@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
 using ProjectCopilot.Api.Endpoints;
 using ProjectCopilot.Application.Documents.CreateDocument;
 using ProjectCopilot.Application.Projects.CreateProject;
@@ -391,5 +393,63 @@ public class DocumentsAuthorizationTests : IClassFixture<ProjectCopilotWebApplic
             new CreateDocumentCommand(Guid.NewGuid(), "Unauthorized Create Document", null));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    private static readonly JsonSerializerOptions ProblemDetailsJsonOptions =
+        new() { PropertyNameCaseInsensitive = true };
+
+    /// <summary>
+    /// Regression test for the information-disclosure finding: GET /api/v1/documents/{id} must
+    /// return a 404 with an identical response body whether the id genuinely doesn't exist
+    /// (Case A) or belongs to a document in a project the caller isn't a member of (Case B) —
+    /// and in neither case may the foreign project's real id, or the foreign document's own id,
+    /// appear anywhere in the response body. Before the fix, Case B's message embedded the
+    /// document's real ProjectId (derived server-side from the loaded document, not supplied by
+    /// the caller), letting an unauthorized caller learn a foreign project's real GUID just by
+    /// guessing a document id. Mirrors TasksAuthorizationTests' equivalent test.
+    /// </summary>
+    [Fact]
+    public async Task GetById_NonexistentVsForeignProject_ShouldReturnIdenticalBodyWithNoLeakedIds()
+    {
+        using var ownerClient = _factory.CreateClient();
+        using var outsiderClient = _factory.CreateClient();
+
+        var (ownerToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(ownerClient);
+        var foreignProject = await CreateProjectAsync(ownerClient, ownerToken, "Leak-Check Foreign Document Project");
+        var foreignDocument = await CreateDocumentAsync(ownerClient, foreignProject.Id, "Leak-Check Foreign Document");
+
+        var (outsiderToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(outsiderClient);
+        Authenticate(outsiderClient, outsiderToken);
+
+        // Case A: the id never existed at all.
+        var nonexistentResponse = await outsiderClient.GetAsync($"/api/v1/documents/{Guid.NewGuid()}");
+
+        // Case B: the id is real, but belongs to a document under a project the caller is not a
+        // member of — the real cross-project-authorization scenario.
+        var foreignResponse = await outsiderClient.GetAsync($"/api/v1/documents/{foreignDocument.Id}");
+
+        Assert.Equal(HttpStatusCode.NotFound, nonexistentResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, foreignResponse.StatusCode);
+
+        var nonexistentBodyText = await nonexistentResponse.Content.ReadAsStringAsync();
+        var foreignBodyText = await foreignResponse.Content.ReadAsStringAsync();
+
+        var nonexistentProblem = JsonSerializer.Deserialize<ProblemDetails>(nonexistentBodyText, ProblemDetailsJsonOptions);
+        var foreignProblem = JsonSerializer.Deserialize<ProblemDetails>(foreignBodyText, ProblemDetailsJsonOptions);
+
+        Assert.NotNull(nonexistentProblem);
+        Assert.NotNull(foreignProblem);
+        Assert.False(string.IsNullOrEmpty(foreignProblem!.Detail));
+
+        // The two 404 bodies must be byte-for-byte identical in their Detail text — proving
+        // "doesn't exist" and "exists but forbidden" are genuinely indistinguishable, not merely
+        // both 404s with different wording.
+        Assert.Equal(nonexistentProblem!.Detail, foreignProblem.Detail);
+
+        // Empirically prove neither body leaks the foreign project's real id, or the foreign
+        // document's own id, rather than just trusting the message text looks generic.
+        Assert.DoesNotContain(foreignProject.Id.ToString(), nonexistentBodyText);
+        Assert.DoesNotContain(foreignProject.Id.ToString(), foreignBodyText);
+        Assert.DoesNotContain(foreignDocument.Id.ToString(), foreignBodyText);
     }
 }

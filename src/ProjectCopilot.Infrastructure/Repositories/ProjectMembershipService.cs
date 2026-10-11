@@ -27,8 +27,11 @@ public class ProjectMembershipService : IProjectMembershipService
 
         if (!isMember)
         {
-            throw new NotFoundException(
-                $"Project with id '{projectId}' was not found.");
+            // Deliberately generic: this fires for "project doesn't exist" and "project exists
+            // but caller isn't a member" alike, and must never embed the real projectId — doing
+            // so would let a caller who derived this id from an unrelated resource (e.g. a
+            // task/document they don't own) learn a foreign project's real GUID via the 404 body.
+            throw NotFoundException.HiddenResource();
         }
     }
 }

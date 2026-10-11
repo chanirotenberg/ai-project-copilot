@@ -34,8 +34,9 @@ public sealed class UpdateTaskHandler
 
         if (task is null)
         {
-            throw new NotFoundException(
-                $"Task with id '{command.Id}' was not found.");
+            // Must stay textually identical to the membership-check 404 below — see
+            // NotFoundException.HiddenResource() for why this can't embed the requested id.
+            throw NotFoundException.HiddenResource();
         }
 
         await _membershipService.EnsureMemberAsync(

@@ -45,7 +45,11 @@ public static class TasksEndpoints
 
             if (task is null)
             {
-                throw new NotFoundException($"Task with id '{id}' was not found.");
+                // Must stay textually identical to the membership-check 404 below (and to the
+                // generic NotFoundException.HiddenResource() message) — a cross-project task id
+                // is derived from a resource the caller shouldn't be able to confirm exists, so
+                // "doesn't exist" and "exists but you lack access" must be indistinguishable.
+                throw NotFoundException.HiddenResource();
             }
 
             await membershipService.EnsureMemberAsync(

@@ -33,7 +33,9 @@ public static class ProjectsEndpoints
 
             if (project is null)
             {
-                throw new NotFoundException($"Project with id '{id}' was not found.");
+                // Must stay textually identical to the membership-check 404 below — same
+                // indistinguishability rationale as Tasks/Documents GET-by-id endpoints.
+                throw NotFoundException.HiddenResource();
             }
 
             await membershipService.EnsureMemberAsync(id, user.GetUserId(), cancellationToken);
