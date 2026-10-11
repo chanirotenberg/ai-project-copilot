@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { ApiError } from '../api/types';
+import { DocumentsSection } from '../documents/DocumentsSection';
 import { TasksSection } from '../tasks/TasksSection';
 import { formatDate } from './formatDate';
 import { useProject } from './useProject';
@@ -12,9 +13,9 @@ const GENERIC_LOAD_ERROR = 'Unable to load project. Please try again.';
 const NOT_FOUND_MESSAGE = 'Project not found or unavailable.';
 
 /**
- * Project Dashboard (Slice 1.10/1.11): project detail for a single project, by id
- * from the route, plus its Tasks section. Project fields themselves are read-only
- * here (no edit/delete/members UI - later slices).
+ * Project Dashboard (Slice 1.10/1.11/1.13): project detail for a single project, by
+ * id from the route, plus its Tasks and Documents sections. Project fields
+ * themselves are read-only here (no edit/delete/members UI - later slices).
  */
 export function ProjectDashboardPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -55,6 +56,7 @@ export function ProjectDashboardPage() {
       ) : null}
 
       {projectQuery.data ? <TasksSection projectId={projectId!} /> : null}
+      {projectQuery.data ? <DocumentsSection projectId={projectId!} /> : null}
     </section>
   );
 }
