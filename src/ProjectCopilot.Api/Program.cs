@@ -7,6 +7,8 @@ using ProjectCopilot.Api.Endpoints;
 using FluentValidation;
 using ProjectCopilot.Application.Projects.CreateProject;
 using ProjectCopilot.Application.Tasks.CreateTask;
+using ProjectCopilot.Application.Documents.CreateDocument;
+using ProjectCopilot.Application.Documents.UpdateDocument;
 
 using ProjectCopilot.Application.Abstractions;
 using ProjectCopilot.Infrastructure.Repositories;
@@ -98,6 +100,7 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 builder.Services.AddScoped<IProjectMembershipService, ProjectMembershipService>();
 
 builder.Services.AddScoped<CreateProjectHandler>();
@@ -108,6 +111,12 @@ builder.Services.AddScoped<IValidator<CreateTaskCommand>, CreateTaskValidator>()
 
 builder.Services.AddScoped<UpdateTaskHandler>();
 builder.Services.AddScoped<IValidator<UpdateTaskCommand>, UpdateTaskValidator>();
+
+builder.Services.AddScoped<CreateDocumentHandler>();
+builder.Services.AddScoped<IValidator<CreateDocumentCommand>, CreateDocumentValidator>();
+
+builder.Services.AddScoped<UpdateDocumentHandler>();
+builder.Services.AddScoped<IValidator<UpdateDocumentCommand>, UpdateDocumentValidator>();
 
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
@@ -156,6 +165,7 @@ app.UseAuthorization();
 
 app.MapProjectsEndpoints();
 app.MapTasksEndpoints();
+app.MapDocumentsEndpoints();
 app.MapAuthEndpoints();
 
 // Configure the HTTP request pipeline.

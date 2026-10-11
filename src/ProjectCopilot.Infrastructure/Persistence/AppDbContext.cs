@@ -20,6 +20,8 @@ public class AppDbContext : IdentityUserContext<ApplicationUser, Guid>
 
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
 
+    public DbSet<DocumentMetadata> Documents => Set<DocumentMetadata>();
+
     // Enforces email uniqueness at the database level. Without this, two concurrent
     // registrations with the same email could both pass the application-level
     // RequireUniqueEmail check before either commits.
@@ -56,6 +58,14 @@ public class AppDbContext : IdentityUserContext<ApplicationUser, Guid>
             entity.HasOne<Project>()
                 .WithMany()
                 .HasForeignKey(m => m.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<DocumentMetadata>(entity =>
+        {
+            entity.HasOne<Project>()
+                .WithMany()
+                .HasForeignKey(d => d.ProjectId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }
