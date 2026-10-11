@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  build-and-test:
+  backend:
     runs-on: ubuntu-latest
 
     services:
@@ -54,3 +54,39 @@ jobs:
 
       - name: Test
         run: dotnet test ./ProjectCopilot.slnx --no-build --configuration Release
+
+  frontend:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: src/ProjectCopilot.Web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: src/ProjectCopilot.Web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Test
+        run: npm run test
