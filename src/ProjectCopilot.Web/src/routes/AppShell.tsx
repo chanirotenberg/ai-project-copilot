@@ -18,14 +18,19 @@ export function AppShell() {
 
   return (
     <div>
-      <header>
+      <header className="app-header">
         <h1>AI Project Copilot</h1>
-        <button type="button" onClick={handleLogout}>
+        {/* Signing out is reversible (just ends the session, no data loss),
+            so it gets the neutral `secondary` style rather than `danger`,
+            which is reserved for destructive actions like Delete. */}
+        <button type="button" className="btn btn-secondary" onClick={handleLogout}>
           Logout
         </button>
       </header>
       <main>
-        <Outlet />
+        <div className="container">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

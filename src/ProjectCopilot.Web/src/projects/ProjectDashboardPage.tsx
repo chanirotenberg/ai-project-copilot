@@ -26,13 +26,15 @@ export function ProjectDashboardPage() {
   return (
     <section>
       <p>
-        <Link to="/">&larr; Back to Projects</Link>
+        <Link to="/" className="link-subtle">
+          &larr; Back to Projects
+        </Link>
       </p>
 
-      {projectQuery.isPending ? <p>Loading project…</p> : null}
+      {projectQuery.isPending ? <p className="text-muted">Loading project…</p> : null}
 
       {projectQuery.isError ? (
-        <p role="alert">
+        <p className="alert" role="alert">
           {projectQuery.error instanceof ApiError && projectQuery.error.status === 404
             ? NOT_FOUND_MESSAGE
             : GENERIC_LOAD_ERROR}
@@ -40,14 +42,23 @@ export function ProjectDashboardPage() {
       ) : null}
 
       {projectQuery.data ? (
-        <article>
-          <h2>{projectQuery.data.name}</h2>
-          <p>Status: {projectQuery.data.status}</p>
-          <p>
+        <article className="card">
+          <h2 className="card-title">{projectQuery.data.name}</h2>
+          <p className="item-meta">
+            Status:{' '}
+            <span className={`badge badge-status-${projectQuery.data.status.toLowerCase()}`}>
+              {projectQuery.data.status}
+            </span>
+          </p>
+          <p className="item-meta">
             Deadline:{' '}
             {projectQuery.data.deadline ? formatDate(projectQuery.data.deadline) : 'No deadline'}
           </p>
-          <p>
+          <p
+            className={
+              projectQuery.data.description ? 'item-description' : 'item-description text-muted'
+            }
+          >
             {projectQuery.data.description
               ? projectQuery.data.description
               : 'No description provided.'}

@@ -51,41 +51,55 @@ export function LoginPage() {
   }
 
   return (
-    <main>
-      <h1>Sign in</h1>
-      <form onSubmit={handleSubmit} noValidate>
-        <div>
-          <label htmlFor="login-email">Email</label>
-          <input
-            id="login-email"
-            name="email"
-            type="email"
-            autoComplete="username"
-            value={email}
-            disabled={isSubmitting || isBootstrapping}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-        </div>
-        <div>
-          <label htmlFor="login-password">Password</label>
-          <input
-            id="login-password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            disabled={isSubmitting || isBootstrapping}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </div>
+    <main className="page-center">
+      <div className="card auth-card">
+        <h1 className="card-title">Sign in</h1>
+        <form onSubmit={handleSubmit} noValidate>
+          <div className="form-field">
+            <label htmlFor="login-email">Email</label>
+            <input
+              id="login-email"
+              name="email"
+              type="email"
+              autoComplete="username"
+              value={email}
+              disabled={isSubmitting || isBootstrapping}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          </div>
+          <div className="form-field">
+            <label htmlFor="login-password">Password</label>
+            <input
+              id="login-password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              disabled={isSubmitting || isBootstrapping}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </div>
 
-        {validationError ? <p role="alert">{validationError}</p> : null}
-        {submitError ? <p role="alert">{submitError}</p> : null}
+          {validationError ? (
+            <p className="alert" role="alert">
+              {validationError}
+            </p>
+          ) : null}
+          {submitError ? (
+            <p className="alert" role="alert">
+              {submitError}
+            </p>
+          ) : null}
 
-        <button type="submit" disabled={isSubmitting || isBootstrapping}>
-          {isSubmitting ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={isSubmitting || isBootstrapping}
+          >
+            {isSubmitting ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+      </div>
     </main>
   );
 }

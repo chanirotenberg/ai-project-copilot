@@ -10,11 +10,15 @@ import { Link } from 'react-router-dom';
  */
 export function NotFoundPage() {
   return (
-    <div>
-      <h1>Page not found</h1>
-      <p>
-        <Link to="/">Back to Projects</Link>
-      </p>
+    <div className="center-page">
+      <div className="card auth-card">
+        <h1 className="card-title">Page not found</h1>
+        <p>
+          <Link to="/" className="link-subtle">
+            Back to Projects
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }

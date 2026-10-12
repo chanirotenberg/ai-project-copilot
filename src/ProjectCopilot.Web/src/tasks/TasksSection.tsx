@@ -64,11 +64,11 @@ export function TasksSection({ projectId }: { projectId: string }) {
   }
 
   return (
-    <section>
-      <h3>Tasks</h3>
+    <section className="section">
+      <h3 className="section-title">Tasks</h3>
 
-      <form onSubmit={handleSubmit} noValidate>
-        <div>
+      <form className="card" onSubmit={handleSubmit} noValidate>
+        <div className="form-field">
           <label htmlFor="task-title">Title</label>
           <input
             id="task-title"
@@ -79,7 +79,7 @@ export function TasksSection({ projectId }: { projectId: string }) {
             onChange={(event) => setTitle(event.target.value)}
           />
         </div>
-        <div>
+        <div className="form-field">
           <label htmlFor="task-description">Description</label>
           <textarea
             id="task-description"
@@ -89,7 +89,7 @@ export function TasksSection({ projectId }: { projectId: string }) {
             onChange={(event) => setDescription(event.target.value)}
           />
         </div>
-        <div>
+        <div className="form-field">
           <label htmlFor="task-priority">Priority</label>
           <select
             id="task-priority"
@@ -105,7 +105,7 @@ export function TasksSection({ projectId }: { projectId: string }) {
             ))}
           </select>
         </div>
-        <div>
+        <div className="form-field">
           <label htmlFor="task-due-date">Due Date</label>
           <input
             id="task-due-date"
@@ -117,29 +117,35 @@ export function TasksSection({ projectId }: { projectId: string }) {
           />
         </div>
 
-        {validationError ? <p role="alert">{validationError}</p> : null}
+        {validationError ? (
+          <p className="alert" role="alert">
+            {validationError}
+          </p>
+        ) : null}
         {createTaskMutation.isError ? (
-          <p role="alert">{getTaskErrorMessage(createTaskMutation.error)}</p>
+          <p className="alert" role="alert">
+            {getTaskErrorMessage(createTaskMutation.error)}
+          </p>
         ) : null}
 
-        <button type="submit" disabled={createTaskMutation.isPending}>
+        <button type="submit" className="btn btn-primary" disabled={createTaskMutation.isPending}>
           {createTaskMutation.isPending ? 'Creating…' : 'Create task'}
         </button>
       </form>
 
-      {tasksQuery.isPending ? <p>Loading tasks…</p> : null}
+      {tasksQuery.isPending ? <p className="text-muted">Loading tasks…</p> : null}
 
       {tasksQuery.isError ? (
-        <p role="alert">
+        <p className="alert" role="alert">
           {tasksQuery.error instanceof ApiError ? tasksQuery.error.message : GENERIC_LOAD_ERROR}
         </p>
       ) : null}
 
       {!tasksQuery.isPending && !tasksQuery.isError && tasksQuery.data ? (
         tasksQuery.data.length === 0 ? (
-          <p>No tasks yet.</p>
+          <p className="empty-state">No tasks yet.</p>
         ) : (
-          <ul>
+          <ul className="list">
             {tasksQuery.data.map((task) => (
               <TaskRow key={task.id} task={task} projectId={projectId} />
             ))}

@@ -55,11 +55,11 @@ export function DocumentsSection({ projectId }: { projectId: string }) {
   }
 
   return (
-    <section>
-      <h3>Documents</h3>
+    <section className="section">
+      <h3 className="section-title">Documents</h3>
 
-      <form onSubmit={handleSubmit} noValidate>
-        <div>
+      <form className="card" onSubmit={handleSubmit} noValidate>
+        <div className="form-field">
           <label htmlFor="document-title">Title</label>
           <input
             id="document-title"
@@ -70,7 +70,7 @@ export function DocumentsSection({ projectId }: { projectId: string }) {
             onChange={(event) => setTitle(event.target.value)}
           />
         </div>
-        <div>
+        <div className="form-field">
           <label htmlFor="document-description">Description</label>
           <textarea
             id="document-description"
@@ -81,20 +81,30 @@ export function DocumentsSection({ projectId }: { projectId: string }) {
           />
         </div>
 
-        {validationError ? <p role="alert">{validationError}</p> : null}
+        {validationError ? (
+          <p className="alert" role="alert">
+            {validationError}
+          </p>
+        ) : null}
         {createDocumentMutation.isError ? (
-          <p role="alert">{getDocumentErrorMessage(createDocumentMutation.error)}</p>
+          <p className="alert" role="alert">
+            {getDocumentErrorMessage(createDocumentMutation.error)}
+          </p>
         ) : null}
 
-        <button type="submit" disabled={createDocumentMutation.isPending}>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={createDocumentMutation.isPending}
+        >
           {createDocumentMutation.isPending ? 'Creating…' : 'Create document'}
         </button>
       </form>
 
-      {documentsQuery.isPending ? <p>Loading documents…</p> : null}
+      {documentsQuery.isPending ? <p className="text-muted">Loading documents…</p> : null}
 
       {documentsQuery.isError ? (
-        <p role="alert">
+        <p className="alert" role="alert">
           {documentsQuery.error instanceof ApiError
             ? documentsQuery.error.message
             : GENERIC_LOAD_ERROR}
@@ -103,9 +113,9 @@ export function DocumentsSection({ projectId }: { projectId: string }) {
 
       {!documentsQuery.isPending && !documentsQuery.isError && documentsQuery.data ? (
         documentsQuery.data.length === 0 ? (
-          <p>No documents yet.</p>
+          <p className="empty-state">No documents yet.</p>
         ) : (
-          <ul>
+          <ul className="list">
             {documentsQuery.data.map((document) => (
               <DocumentRow key={document.id} document={document} projectId={projectId} />
             ))}

@@ -73,8 +73,8 @@ export function DocumentRow({ document, projectId }: { document: Document; proje
 
   if (isEditing) {
     return (
-      <li>
-        <div>
+      <li className="card card-editing">
+        <div className="form-field">
           <label htmlFor={`document-${document.id}-title`}>Title</label>
           <input
             id={`document-${document.id}-title`}
@@ -84,7 +84,7 @@ export function DocumentRow({ document, projectId }: { document: Document; proje
             onChange={(event) => setTitle(event.target.value)}
           />
         </div>
-        <div>
+        <div className="form-field">
           <label htmlFor={`document-${document.id}-description`}>Description</label>
           <textarea
             id={`document-${document.id}-description`}
@@ -95,38 +95,61 @@ export function DocumentRow({ document, projectId }: { document: Document; proje
         </div>
 
         {updateDocumentMutation.isError ? (
-          <p role="alert">{getDocumentErrorMessage(updateDocumentMutation.error)}</p>
+          <p className="alert" role="alert">
+            {getDocumentErrorMessage(updateDocumentMutation.error)}
+          </p>
         ) : null}
 
-        <button type="button" onClick={handleSave} disabled={updateDocumentMutation.isPending}>
-          {updateDocumentMutation.isPending ? 'Saving…' : 'Save'}
-        </button>
-        <button type="button" onClick={cancelEditing} disabled={updateDocumentMutation.isPending}>
-          Cancel
-        </button>
+        <div className="item-actions">
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleSave}
+            disabled={updateDocumentMutation.isPending}
+          >
+            {updateDocumentMutation.isPending ? 'Saving…' : 'Save'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={cancelEditing}
+            disabled={updateDocumentMutation.isPending}
+          >
+            Cancel
+          </button>
+        </div>
       </li>
     );
   }
 
   return (
-    <li>
-      <strong>{document.title}</strong>
-      <p>{document.description ? document.description : 'No description provided.'}</p>
+    <li className="card">
+      <strong className="item-title">{document.title}</strong>
+      <p className={document.description ? 'item-description' : 'item-description text-muted'}>
+        {document.description ? document.description : 'No description provided.'}
+      </p>
 
       {deleteDocumentMutation.isError ? (
-        <p role="alert">
+        <p className="alert" role="alert">
           {deleteDocumentMutation.error instanceof ApiError
             ? deleteDocumentMutation.error.message
             : GENERIC_DELETE_ERROR}
         </p>
       ) : null}
 
-      <button type="button" onClick={startEditing}>
-        Edit
-      </button>
-      <button type="button" onClick={handleDelete} disabled={deleteDocumentMutation.isPending}>
-        {deleteDocumentMutation.isPending ? 'Deleting…' : 'Delete'}
-      </button>
+      <div className="item-actions">
+        <button type="button" className="btn btn-secondary" onClick={startEditing}>
+          Edit
+        </button>
+        <button
+          type="button"
+          className="btn btn-danger"
+          onClick={handleDelete}
+          disabled={deleteDocumentMutation.isPending}
+        >
+          {deleteDocumentMutation.isPending ? 'Deleting…' : 'Delete'}
+        </button>
+      </div>
     </li>
   );
 }

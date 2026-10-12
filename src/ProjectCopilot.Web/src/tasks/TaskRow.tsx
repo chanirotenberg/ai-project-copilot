@@ -98,8 +98,8 @@ export function TaskRow({ task, projectId }: { task: Task; projectId: string }) 
 
   if (isEditing) {
     return (
-      <li>
-        <div>
+      <li className="card card-editing">
+        <div className="form-field">
           <label htmlFor={`task-${task.id}-title`}>Title</label>
           <input
             id={`task-${task.id}-title`}
@@ -109,7 +109,7 @@ export function TaskRow({ task, projectId }: { task: Task; projectId: string }) 
             onChange={(event) => setTitle(event.target.value)}
           />
         </div>
-        <div>
+        <div className="form-field">
           <label htmlFor={`task-${task.id}-description`}>Description</label>
           <textarea
             id={`task-${task.id}-description`}
@@ -118,7 +118,7 @@ export function TaskRow({ task, projectId }: { task: Task; projectId: string }) 
             onChange={(event) => setDescription(event.target.value)}
           />
         </div>
-        <div>
+        <div className="form-field">
           <label htmlFor={`task-${task.id}-status`}>Status</label>
           <select
             id={`task-${task.id}-status`}
@@ -133,7 +133,7 @@ export function TaskRow({ task, projectId }: { task: Task; projectId: string }) 
             ))}
           </select>
         </div>
-        <div>
+        <div className="form-field">
           <label htmlFor={`task-${task.id}-priority`}>Priority</label>
           <select
             id={`task-${task.id}-priority`}
@@ -148,7 +148,7 @@ export function TaskRow({ task, projectId }: { task: Task; projectId: string }) 
             ))}
           </select>
         </div>
-        <div>
+        <div className="form-field">
           <label htmlFor={`task-${task.id}-due-date`}>Due Date</label>
           <input
             id={`task-${task.id}-due-date`}
@@ -158,7 +158,7 @@ export function TaskRow({ task, projectId }: { task: Task; projectId: string }) 
             onChange={(event) => setDueDate(event.target.value)}
           />
         </div>
-        <div>
+        <div className="form-field form-field-checkbox">
           <label htmlFor={`task-${task.id}-blocked`}>Blocked</label>
           <input
             id={`task-${task.id}-blocked`}
@@ -170,38 +170,71 @@ export function TaskRow({ task, projectId }: { task: Task; projectId: string }) 
         </div>
 
         {updateTaskMutation.isError ? (
-          <p role="alert">{getTaskErrorMessage(updateTaskMutation.error)}</p>
+          <p className="alert" role="alert">
+            {getTaskErrorMessage(updateTaskMutation.error)}
+          </p>
         ) : null}
 
-        <button type="button" onClick={handleSave} disabled={updateTaskMutation.isPending}>
-          {updateTaskMutation.isPending ? 'Saving…' : 'Save'}
-        </button>
-        <button type="button" onClick={cancelEditing} disabled={updateTaskMutation.isPending}>
-          Cancel
-        </button>
+        <div className="item-actions">
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleSave}
+            disabled={updateTaskMutation.isPending}
+          >
+            {updateTaskMutation.isPending ? 'Saving…' : 'Save'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={cancelEditing}
+            disabled={updateTaskMutation.isPending}
+          >
+            Cancel
+          </button>
+        </div>
       </li>
     );
   }
 
   return (
-    <li>
-      <strong>{task.title}</strong> — {task.status} — {task.priority}
-      {task.isBlocked ? <span> (Blocked)</span> : null}
-      <p>Due date: {task.dueDate ? formatDate(task.dueDate) : 'No due date'}</p>
-      <p>{task.description ? task.description : 'No description provided.'}</p>
+    <li className="card">
+      <div className="item-header">
+        <strong className="item-title">{task.title}</strong>
+        <div className="badge-group">
+          <span className={`badge badge-status-${task.status.toLowerCase()}`}>{task.status}</span>
+          <span className={`badge badge-priority-${task.priority.toLowerCase()}`}>
+            {task.priority}
+          </span>
+          {task.isBlocked ? <span className="badge badge-blocked"> (Blocked)</span> : null}
+        </div>
+      </div>
+      <p className={task.dueDate ? 'item-meta' : 'item-meta text-muted'}>
+        Due date: {task.dueDate ? formatDate(task.dueDate) : 'No due date'}
+      </p>
+      <p className={task.description ? 'item-description' : 'item-description text-muted'}>
+        {task.description ? task.description : 'No description provided.'}
+      </p>
       {deleteTaskMutation.isError ? (
-        <p role="alert">
+        <p className="alert" role="alert">
           {deleteTaskMutation.error instanceof ApiError
             ? deleteTaskMutation.error.message
             : GENERIC_DELETE_ERROR}
         </p>
       ) : null}
-      <button type="button" onClick={startEditing}>
-        Edit
-      </button>
-      <button type="button" onClick={handleDelete} disabled={deleteTaskMutation.isPending}>
-        {deleteTaskMutation.isPending ? 'Deleting…' : 'Delete'}
-      </button>
+      <div className="item-actions">
+        <button type="button" className="btn btn-secondary" onClick={startEditing}>
+          Edit
+        </button>
+        <button
+          type="button"
+          className="btn btn-danger"
+          onClick={handleDelete}
+          disabled={deleteTaskMutation.isPending}
+        >
+          {deleteTaskMutation.isPending ? 'Deleting…' : 'Delete'}
+        </button>
+      </div>
     </li>
   );
 }

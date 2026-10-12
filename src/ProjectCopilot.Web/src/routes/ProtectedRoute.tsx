@@ -12,7 +12,7 @@ export function ProtectedRoute() {
   const { isAuthenticated, isBootstrapping } = useAuth();
 
   if (isBootstrapping) {
-    return <p>Loading session…</p>;
+    return <p className="text-muted">Loading session…</p>;
   }
 
   if (!isAuthenticated) {

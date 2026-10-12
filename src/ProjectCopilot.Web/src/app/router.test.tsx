@@ -117,6 +117,10 @@ describe('app router (AUDIT-6: unmatched-path fallback)', () => {
     renderApp('/projects/abc-123');
 
     expect(await screen.findByText('Demo Project')).toBeInTheDocument();
-    expect(screen.getByText(/Status: Active/)).toBeInTheDocument();
+    // The status value now renders as its own badge element inside the
+    // "Status: " paragraph (visual polish pass) - query the label and value
+    // as separate text nodes rather than one combined "Status: Active" match.
+    expect(screen.getByText(/Status:/)).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
   });
 });

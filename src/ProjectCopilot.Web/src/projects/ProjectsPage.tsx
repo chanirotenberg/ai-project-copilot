@@ -123,10 +123,10 @@ export function ProjectsPage() {
 
   return (
     <section>
-      <h2>Projects</h2>
+      <h2 className="page-title">Projects</h2>
 
-      <form onSubmit={handleSubmit} noValidate>
-        <div>
+      <form className="card" onSubmit={handleSubmit} noValidate>
+        <div className="form-field">
           <label htmlFor="project-name">Name</label>
           <input
             id="project-name"
@@ -137,7 +137,7 @@ export function ProjectsPage() {
             onChange={(event) => setName(event.target.value)}
           />
         </div>
-        <div>
+        <div className="form-field">
           <label htmlFor="project-description">Description</label>
           <textarea
             id="project-description"
@@ -147,7 +147,7 @@ export function ProjectsPage() {
             onChange={(event) => setDescription(event.target.value)}
           />
         </div>
-        <div>
+        <div className="form-field">
           <label htmlFor="project-deadline">Deadline</label>
           <input
             id="project-deadline"
@@ -159,20 +159,30 @@ export function ProjectsPage() {
           />
         </div>
 
-        {validationError ? <p role="alert">{validationError}</p> : null}
+        {validationError ? (
+          <p className="alert" role="alert">
+            {validationError}
+          </p>
+        ) : null}
         {createProjectMutation.isError ? (
-          <p role="alert">{getCreateProjectErrorMessage(createProjectMutation.error)}</p>
+          <p className="alert" role="alert">
+            {getCreateProjectErrorMessage(createProjectMutation.error)}
+          </p>
         ) : null}
 
-        <button type="submit" disabled={createProjectMutation.isPending}>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={createProjectMutation.isPending}
+        >
           {createProjectMutation.isPending ? 'Creating…' : 'Create project'}
         </button>
       </form>
 
-      {projectsQuery.isPending ? <p>Loading projects…</p> : null}
+      {projectsQuery.isPending ? <p className="text-muted">Loading projects…</p> : null}
 
       {projectsQuery.isError ? (
-        <p role="alert">
+        <p className="alert" role="alert">
           {projectsQuery.error instanceof ApiError
             ? projectsQuery.error.message
             : GENERIC_LOAD_ERROR}
@@ -181,14 +191,21 @@ export function ProjectsPage() {
 
       {!projectsQuery.isPending && !projectsQuery.isError && projectsQuery.data ? (
         projectsQuery.data.length === 0 ? (
-          <p>No projects yet. Create one above to get started.</p>
+          <p className="empty-state">No projects yet. Create one above to get started.</p>
         ) : (
-          <ul>
+          <ul className="list">
             {projectsQuery.data.map((project) => (
               <li key={project.id}>
-                <Link to={`/projects/${project.id}`}>
-                  <strong>{project.name}</strong> — {project.status}
-                  {project.deadline ? <span> (due {formatDate(project.deadline)})</span> : null}
+                <Link to={`/projects/${project.id}`} className="card card-link">
+                  <div className="item-header">
+                    <strong className="item-title">{project.name}</strong>
+                    <span className={`badge badge-status-${project.status.toLowerCase()}`}>
+                      {project.status}
+                    </span>
+                  </div>
+                  {project.deadline ? (
+                    <p className="item-meta">(due {formatDate(project.deadline)})</p>
+                  ) : null}
                 </Link>
               </li>
             ))}

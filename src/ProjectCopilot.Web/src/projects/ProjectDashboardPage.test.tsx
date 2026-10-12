@@ -68,7 +68,12 @@ describe('ProjectDashboardPage', () => {
     renderDashboard('project-1');
 
     expect(await screen.findByText('Demo Project')).toBeInTheDocument();
-    expect(screen.getByText(/Status: Active/)).toBeInTheDocument();
+    // The status value now renders as its own badge element inside the
+    // "Status: " paragraph (visual polish pass), so the label and value are
+    // separate text nodes - query them separately rather than as one
+    // combined "Status: Active" text match.
+    expect(screen.getByText(/Status:/)).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.getByText('A real description')).toBeInTheDocument();
 
     // GET goes through the existing apiFetch (Authorization header etc.) at exactly the
