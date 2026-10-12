@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ProjectCopilot.Application.Common.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
@@ -61,6 +62,17 @@ public sealed class ExceptionHandlingMiddleware
                 Status = StatusCodes.Status401Unauthorized,
                 Title = "Authentication failed.",
                 Detail = ex.Message
+            });
+        }
+        catch (BadHttpRequestException ex) when (ex.InnerException is JsonException)
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+
+            await context.Response.WriteAsJsonAsync(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Malformed request.",
+                Detail = "The request body is malformed."
             });
         }
         catch (Exception ex)
