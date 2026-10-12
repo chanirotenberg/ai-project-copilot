@@ -659,4 +659,65 @@ public class TasksAuthorizationTests : IClassFixture<ProjectCopilotWebApplicatio
         Assert.NotNull(updatedTask);
         Assert.Null(updatedTask!.AssignedUserId);
     }
+
+    /// <summary>
+    /// QA-1: tasks within a project can share an identical CreatedAt (the demo seed does this
+    /// deliberately, by reusing one captured `now` for every task it creates) - without a
+    /// deterministic tiebreaker, Postgres has no guaranteed order among tied rows, and an
+    /// UPDATE's tuple rewrite can silently change which tied row sorts first/last on the next
+    /// read. This forces an exact tie directly against the DB (not relying on timing) and proves
+    /// the list order survives both repeated reads and an unrelated update to a middle row.
+    /// </summary>
+    [Fact]
+    public async Task GetTasks_OrderingIsStableAcrossUpdates_EvenWithTiedCreatedAt()
+    {
+        using var client = _factory.CreateClient();
+
+        var projectId = await RegisterLoginAndCreateProjectAsync(client, "Stable Ordering Project");
+
+        var task1Id = await CreateTaskAsync(client, projectId, "Task One");
+        var task2Id = await CreateTaskAsync(client, projectId, "Task Two");
+        var task3Id = await CreateTaskAsync(client, projectId, "Task Three");
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var tiedCreatedAt = DateTime.UtcNow;
+
+            var tasks = await dbContext.Tasks
+                .Where(t => t.ProjectId == projectId)
+                .ToListAsync();
+
+            foreach (var task in tasks)
+            {
+                task.CreatedAt = tiedCreatedAt;
+            }
+
+            await dbContext.SaveChangesAsync();
+        }
+
+        var firstListResponse = await client.GetAsync($"/api/v1/tasks?projectId={projectId}");
+        firstListResponse.EnsureSuccessStatusCode();
+        var firstOrder = await firstListResponse.Content.ReadFromJsonAsync<List<TaskItem>>();
+        Assert.NotNull(firstOrder);
+        Assert.Equal(3, firstOrder!.Count);
+
+        // Repeated GET with no mutation in between must return the identical order - proving
+        // determinism, not just "happened to match once."
+        var repeatListResponse = await client.GetAsync($"/api/v1/tasks?projectId={projectId}");
+        var repeatOrder = await repeatListResponse.Content.ReadFromJsonAsync<List<TaskItem>>();
+        Assert.Equal(firstOrder.Select(t => t.Id), repeatOrder!.Select(t => t.Id));
+
+        // Editing the middle task (by current display order) must not move it.
+        var middleTaskId = firstOrder[1].Id;
+        var updateResponse = await client.PutAsJsonAsync(
+            $"/api/v1/tasks/{middleTaskId}",
+            new UpdateTaskRequest("Edited Middle Task", null, "Done", "Critical", null, null, false));
+        updateResponse.EnsureSuccessStatusCode();
+
+        var afterUpdateResponse = await client.GetAsync($"/api/v1/tasks?projectId={projectId}");
+        var afterUpdateOrder = await afterUpdateResponse.Content.ReadFromJsonAsync<List<TaskItem>>();
+
+        Assert.Equal(firstOrder.Select(t => t.Id), afterUpdateOrder!.Select(t => t.Id));
+    }
 }

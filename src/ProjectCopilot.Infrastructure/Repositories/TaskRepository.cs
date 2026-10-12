@@ -32,6 +32,7 @@ public class TaskRepository : ITaskRepository
             .AsNoTracking()
             .Where(task => task.ProjectId == projectId)
             .OrderByDescending(task => task.CreatedAt)
+            .ThenBy(task => task.Id)
             .ToListAsync(cancellationToken);
     }
 
