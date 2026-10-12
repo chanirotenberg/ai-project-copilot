@@ -211,6 +211,8 @@ namespace ProjectCopilot.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ProjectId");
+
                     b.ToTable("Tasks");
                 });
 
@@ -358,6 +360,15 @@ namespace ProjectCopilot.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("ProjectCopilot.Domain.Entities.ProjectMember", b =>
+                {
+                    b.HasOne("ProjectCopilot.Domain.Entities.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ProjectCopilot.Domain.Entities.TaskItem", b =>
                 {
                     b.HasOne("ProjectCopilot.Domain.Entities.Project", null)
                         .WithMany()

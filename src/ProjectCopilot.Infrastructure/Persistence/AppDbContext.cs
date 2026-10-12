@@ -68,5 +68,13 @@ public class AppDbContext : IdentityUserContext<ApplicationUser, Guid>
                 .HasForeignKey(d => d.ProjectId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
+        builder.Entity<TaskItem>(entity =>
+        {
+            entity.HasOne<Project>()
+                .WithMany()
+                .HasForeignKey(t => t.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 }
