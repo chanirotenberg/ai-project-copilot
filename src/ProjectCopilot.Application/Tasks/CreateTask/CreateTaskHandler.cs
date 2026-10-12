@@ -49,6 +49,15 @@ public sealed class CreateTaskHandler
             userId,
             cancellationToken);
 
+        if (command.AssignedUserId is { } assigneeId
+            && !await _membershipService.IsMemberAsync(command.ProjectId, assigneeId, cancellationToken))
+        {
+            throw new ValidationException(
+                [new FluentValidation.Results.ValidationFailure(
+                    nameof(command.AssignedUserId),
+                    "Assigned user must be a member of the project.")]);
+        }
+
         var now = DateTime.UtcNow;
 
         var task = new TaskItem

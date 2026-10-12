@@ -34,4 +34,14 @@ public class ProjectMembershipService : IProjectMembershipService
             throw NotFoundException.HiddenResource();
         }
     }
+
+    public Task<bool> IsMemberAsync(
+        Guid projectId,
+        Guid userId,
+        CancellationToken cancellationToken = default) =>
+        _dbContext.ProjectMembers
+            .AsNoTracking()
+            .AnyAsync(
+                member => member.ProjectId == projectId && member.UserId == userId,
+                cancellationToken);
 }

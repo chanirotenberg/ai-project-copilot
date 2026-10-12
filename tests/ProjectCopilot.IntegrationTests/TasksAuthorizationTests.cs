@@ -4,12 +4,15 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using ProjectCopilot.Api.Endpoints;
 using ProjectCopilot.Application.Projects.CreateProject;
 using ProjectCopilot.Application.Tasks.CreateTask;
 using ProjectCopilot.Domain.Entities;
+using ProjectCopilot.Infrastructure.Persistence;
 
 namespace ProjectCopilot.IntegrationTests;
 
@@ -218,6 +221,26 @@ public class TasksAuthorizationTests : IClassFixture<ProjectCopilotWebApplicatio
 
         var task = await response.Content.ReadFromJsonAsync<TaskItem>();
         return task!.Id;
+    }
+
+    /// <summary>
+    /// Inserts a ProjectMember row directly against the test database. There is no members API
+    /// yet (Phase 1 scope is project-creator-as-sole-member plus this direct-insert test seam),
+    /// so this is how AssignedUserId-membership tests get a second real member onto a project.
+    /// </summary>
+    private async Task AddProjectMemberAsync(Guid projectId, Guid userId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        dbContext.ProjectMembers.Add(new ProjectMember
+        {
+            ProjectId = projectId,
+            UserId = userId,
+            CreatedAtUtc = DateTime.UtcNow
+        });
+
+        await dbContext.SaveChangesAsync();
     }
 
     [Fact]
@@ -476,5 +499,164 @@ public class TasksAuthorizationTests : IClassFixture<ProjectCopilotWebApplicatio
         Assert.DoesNotContain(foreignProjectId.ToString(), nonexistentBodyText);
         Assert.DoesNotContain(foreignProjectId.ToString(), foreignBodyText);
         Assert.DoesNotContain(foreignTaskId.ToString(), foreignBodyText);
+    }
+
+    // AUDIT-4 regression coverage: AssignedUserId previously accepted any GUID on Create (no
+    // validator rule) and was unconditionally overwritten on Update (zero membership check),
+    // silently persisting a non-member or entirely nonexistent user as a task's assignee. The
+    // fix adds a handler-level membership check (IProjectMembershipService.IsMemberAsync) for
+    // any non-null AssignedUserId, on both Create and Update.
+
+    [Fact]
+    public async Task CreateTask_WithAssignedUserId_ToRealProjectMember_ShouldReturnCreatedWithThatAssignee()
+    {
+        using var ownerClient = _factory.CreateClient();
+        using var memberClient = _factory.CreateClient();
+
+        var projectId = await RegisterLoginAndCreateProjectAsync(ownerClient, "Assignee Member Project");
+
+        var (_, _, memberUserId, _) = await AuthTestHelper.RegisterAndLoginAsync(memberClient);
+        await AddProjectMemberAsync(projectId, memberUserId);
+
+        var response = await ownerClient.PostAsJsonAsync(
+            "/api/v1/tasks",
+            new CreateTaskCommand(projectId, "Assigned To Member Task", null, "Medium", memberUserId, null));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var task = await response.Content.ReadFromJsonAsync<TaskItem>();
+        Assert.NotNull(task);
+        Assert.Equal(memberUserId, task!.AssignedUserId);
+    }
+
+    [Fact]
+    public async Task CreateTask_WithAssignedUserId_ToRegisteredNonMember_ShouldReturnBadRequest()
+    {
+        using var ownerClient = _factory.CreateClient();
+        using var outsiderClient = _factory.CreateClient();
+
+        var projectId = await RegisterLoginAndCreateProjectAsync(ownerClient, "Assignee Non-Member Project");
+
+        var (_, _, outsiderUserId, _) = await AuthTestHelper.RegisterAndLoginAsync(outsiderClient);
+
+        var response = await ownerClient.PostAsJsonAsync(
+            "/api/v1/tasks",
+            new CreateTaskCommand(projectId, "Assigned To Non-Member Task", null, "Medium", outsiderUserId, null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("assignedUserId", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CreateTask_WithAssignedUserId_ToNonexistentGuid_ShouldReturnBadRequest()
+    {
+        using var ownerClient = _factory.CreateClient();
+
+        var projectId = await RegisterLoginAndCreateProjectAsync(ownerClient, "Assignee Nonexistent Guid Project");
+
+        var response = await ownerClient.PostAsJsonAsync(
+            "/api/v1/tasks",
+            new CreateTaskCommand(projectId, "Assigned To Nonexistent Task", null, "Medium", Guid.NewGuid(), null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("assignedUserId", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CreateTask_WithNullAssignedUserId_ShouldReturnCreatedUnassigned()
+    {
+        using var ownerClient = _factory.CreateClient();
+
+        var projectId = await RegisterLoginAndCreateProjectAsync(ownerClient, "Assignee Null Project");
+
+        var response = await ownerClient.PostAsJsonAsync(
+            "/api/v1/tasks",
+            new CreateTaskCommand(projectId, "Unassigned Task", null, "Medium", null, null));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var task = await response.Content.ReadFromJsonAsync<TaskItem>();
+        Assert.NotNull(task);
+        Assert.Null(task!.AssignedUserId);
+    }
+
+    [Fact]
+    public async Task UpdateTask_WithAssignedUserId_ToAnotherRealProjectMember_ShouldReturnOkWithThatAssignee()
+    {
+        using var ownerClient = _factory.CreateClient();
+        using var memberClient = _factory.CreateClient();
+
+        var projectId = await RegisterLoginAndCreateProjectAsync(ownerClient, "Update Assignee Member Project");
+        var taskId = await CreateTaskAsync(ownerClient, projectId, "Task To Reassign");
+
+        var (_, _, memberUserId, _) = await AuthTestHelper.RegisterAndLoginAsync(memberClient);
+        await AddProjectMemberAsync(projectId, memberUserId);
+
+        var response = await ownerClient.PutAsJsonAsync(
+            $"/api/v1/tasks/{taskId}",
+            new UpdateTaskRequest("Reassigned Task", null, "Todo", "Medium", memberUserId, null, false));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var task = await response.Content.ReadFromJsonAsync<TaskItem>();
+        Assert.NotNull(task);
+        Assert.Equal(memberUserId, task!.AssignedUserId);
+    }
+
+    [Fact]
+    public async Task UpdateTask_WithAssignedUserId_ToNonMemberOrNonexistentId_ShouldReturnBadRequest()
+    {
+        using var ownerClient = _factory.CreateClient();
+        using var outsiderClient = _factory.CreateClient();
+
+        var projectId = await RegisterLoginAndCreateProjectAsync(ownerClient, "Update Assignee Non-Member Project");
+        var taskId = await CreateTaskAsync(ownerClient, projectId, "Task To Reassign Invalidly");
+
+        var (_, _, outsiderUserId, _) = await AuthTestHelper.RegisterAndLoginAsync(outsiderClient);
+
+        var nonMemberResponse = await ownerClient.PutAsJsonAsync(
+            $"/api/v1/tasks/{taskId}",
+            new UpdateTaskRequest("Reassigned Task", null, "Todo", "Medium", outsiderUserId, null, false));
+
+        Assert.Equal(HttpStatusCode.BadRequest, nonMemberResponse.StatusCode);
+
+        var nonexistentResponse = await ownerClient.PutAsJsonAsync(
+            $"/api/v1/tasks/{taskId}",
+            new UpdateTaskRequest("Reassigned Task", null, "Todo", "Medium", Guid.NewGuid(), null, false));
+
+        Assert.Equal(HttpStatusCode.BadRequest, nonexistentResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateTask_WithNullAssignedUserId_ShouldReturnOkUnassigned()
+    {
+        using var ownerClient = _factory.CreateClient();
+        using var memberClient = _factory.CreateClient();
+
+        var projectId = await RegisterLoginAndCreateProjectAsync(ownerClient, "Update Assignee Unassign Project");
+        var (_, _, memberUserId, _) = await AuthTestHelper.RegisterAndLoginAsync(memberClient);
+        await AddProjectMemberAsync(projectId, memberUserId);
+
+        var createResponse = await ownerClient.PostAsJsonAsync(
+            "/api/v1/tasks",
+            new CreateTaskCommand(projectId, "Task To Unassign", null, "Medium", memberUserId, null));
+        createResponse.EnsureSuccessStatusCode();
+        var task = await createResponse.Content.ReadFromJsonAsync<TaskItem>();
+        Assert.NotNull(task);
+        Assert.Equal(memberUserId, task!.AssignedUserId);
+
+        var response = await ownerClient.PutAsJsonAsync(
+            $"/api/v1/tasks/{task.Id}",
+            new UpdateTaskRequest("Unassigned Task", null, "Todo", "Medium", null, null, false));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var updatedTask = await response.Content.ReadFromJsonAsync<TaskItem>();
+        Assert.NotNull(updatedTask);
+        Assert.Null(updatedTask!.AssignedUserId);
     }
 }

@@ -45,6 +45,15 @@ public sealed class UpdateTaskHandler
             userId,
             cancellationToken);
 
+        if (command.AssignedUserId is { } assigneeId
+            && !await _membershipService.IsMemberAsync(task.ProjectId, assigneeId, cancellationToken))
+        {
+            throw new ValidationException(
+                [new FluentValidation.Results.ValidationFailure(
+                    nameof(command.AssignedUserId),
+                    "Assigned user must be a member of the project.")]);
+        }
+
         task.Title = command.Title.Trim();
         task.Description = command.Description?.Trim();
         task.Status = command.Status;
