@@ -68,7 +68,7 @@ describe('TaskRow', () => {
     expect(screen.getByLabelText('Blocked')).not.toBeChecked();
   });
 
-  it('saving sends a PUT to the correct task id with exactly the editable fields, no projectId and no client-chosen assignedUserId', async () => {
+  it('saving sends a PUT to the correct task id with exactly the editable fields, no projectId, and the task current (null) assignedUserId round-tripped', async () => {
     (fetch as Mock).mockResolvedValueOnce(fakeResponse(200, sampleTask));
 
     renderTaskRow();
@@ -216,5 +216,38 @@ describe('TaskRow', () => {
     expect(screen.queryByLabelText('Title')).not.toBeInTheDocument();
     expect(screen.getByText('Write spec')).toBeInTheDocument();
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('saving a task that already has an assignee round-trips that assignedUserId instead of nulling it out', async () => {
+    const assignedTask: Task = {
+      ...sampleTask,
+      assignedUserId: '22222222-2222-2222-2222-222222222222',
+    };
+    (fetch as Mock).mockResolvedValueOnce(fakeResponse(200, assignedTask));
+
+    renderTaskRow(assignedTask);
+    fireEvent.click(screen.getByRole('button', { name: /edit/i }));
+    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+
+    const [, options] = lastPutCall();
+    const requestBody = JSON.parse(options.body as string) as Record<string, unknown>;
+    expect(requestBody.assignedUserId).toBe('22222222-2222-2222-2222-222222222222');
+  });
+
+  it('saving a task with no assignee still sends assignedUserId as null, not omitted or coerced', async () => {
+    (fetch as Mock).mockResolvedValueOnce(fakeResponse(200, sampleTask));
+
+    renderTaskRow(sampleTask);
+    fireEvent.click(screen.getByRole('button', { name: /edit/i }));
+    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+
+    const [, options] = lastPutCall();
+    const requestBody = JSON.parse(options.body as string) as Record<string, unknown>;
+    expect('assignedUserId' in requestBody).toBe(true);
+    expect(requestBody.assignedUserId).toBeNull();
   });
 });

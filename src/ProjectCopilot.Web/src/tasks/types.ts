@@ -46,15 +46,22 @@ export interface CreateTaskRequest {
  *
  * No `id`/`projectId` here - the task id comes from the route, and project
  * membership is resolved server-side from the task's own stored
- * `ProjectId`, never from anything the client sends. `assignedUserId` is
- * `null`-only, for the same reason as `CreateTaskRequest`.
+ * `ProjectId`, never from anything the client sends.
+ *
+ * PUT is a full update of the editable task fields - there is no
+ * omitted-means-preserve semantics. `assignedUserId` must therefore always
+ * be sent, and is typed `string | null` (not the literal `null`) because the
+ * caller always round-trips the task's current `assignedUserId` value
+ * (including `null`, which is itself a valid "unassigned" value) rather
+ * than send a client-chosen one - there is still no assignee picker in this
+ * UI.
  */
 export interface UpdateTaskRequest {
   title: string;
   description?: string;
   status: string;
   priority: string;
-  assignedUserId: null;
+  assignedUserId: string | null;
   dueDate?: string;
   isBlocked: boolean;
 }

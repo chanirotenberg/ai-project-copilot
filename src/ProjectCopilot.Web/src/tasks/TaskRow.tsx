@@ -68,6 +68,10 @@ export function TaskRow({ task, projectId }: { task: Task; projectId: string }) 
           dueDate: dueDate ? dueDate : undefined,
           isBlocked,
         },
+        // Round-tripped from the task prop (never local state) - there is
+        // still no assignee picker, so this is an invisible pass-through of
+        // the task's existing assignment, not a user-editable value.
+        currentAssignedUserId: task.assignedUserId,
       },
       {
         onSuccess: () => {
