@@ -720,4 +720,106 @@ public class TasksAuthorizationTests : IClassFixture<ProjectCopilotWebApplicatio
 
         Assert.Equal(firstOrder.Select(t => t.Id), afterUpdateOrder!.Select(t => t.Id));
     }
+
+    [Fact]
+    public async Task DeleteTask_AsOwner_ShouldReturnNoContentAndTaskNoLongerExists()
+    {
+        using var client = _factory.CreateClient();
+
+        var projectId = await RegisterLoginAndCreateProjectAsync(client, "Delete Own Task Project");
+        var taskId = await CreateTaskAsync(client, projectId, "Task To Delete");
+
+        var deleteResponse = await client.DeleteAsync($"/api/v1/tasks/{taskId}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        var getResponse = await client.GetAsync($"/api/v1/tasks/{taskId}");
+        Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteTask_AsNonMember_ShouldReturnNotFoundAndNotActuallyDelete()
+    {
+        using var ownerClient = _factory.CreateClient();
+        using var outsiderClient = _factory.CreateClient();
+
+        var projectId = await RegisterLoginAndCreateProjectAsync(ownerClient, "Owner-Only Delete Task Project");
+        var taskId = await CreateTaskAsync(ownerClient, projectId, "Task Owner Keeps");
+
+        var (outsiderToken, _, _, _) = await AuthTestHelper.RegisterAndLoginAsync(outsiderClient);
+        outsiderClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", outsiderToken);
+
+        var deleteResponse = await outsiderClient.DeleteAsync($"/api/v1/tasks/{taskId}");
+        Assert.Equal(HttpStatusCode.NotFound, deleteResponse.StatusCode);
+
+        // Prove it genuinely wasn't deleted: the real owner can still fetch it.
+        var ownerGetResponse = await ownerClient.GetAsync($"/api/v1/tasks/{taskId}");
+        Assert.Equal(HttpStatusCode.OK, ownerGetResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteTask_NonexistentTaskId_ShouldReturnNotFound()
+    {
+        using var client = _factory.CreateClient();
+
+        await RegisterLoginAndCreateProjectAsync(client, "Delete Nonexistent Task Project");
+
+        var response = await client.DeleteAsync($"/api/v1/tasks/{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteTask_ShouldNotAffectUnrelatedTasks()
+    {
+        using var client = _factory.CreateClient();
+
+        var projectId = await RegisterLoginAndCreateProjectAsync(client, "Delete One Of Many Tasks Project");
+        var keepTask1Id = await CreateTaskAsync(client, projectId, "Keep Task One");
+        var deleteTaskId = await CreateTaskAsync(client, projectId, "Delete This Task");
+        var keepTask2Id = await CreateTaskAsync(client, projectId, "Keep Task Two");
+
+        var deleteResponse = await client.DeleteAsync($"/api/v1/tasks/{deleteTaskId}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        var keep1Response = await client.GetAsync($"/api/v1/tasks/{keepTask1Id}");
+        var keep2Response = await client.GetAsync($"/api/v1/tasks/{keepTask2Id}");
+
+        Assert.Equal(HttpStatusCode.OK, keep1Response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, keep2Response.StatusCode);
+
+        var listResponse = await client.GetAsync($"/api/v1/tasks?projectId={projectId}");
+        var list = await listResponse.Content.ReadFromJsonAsync<List<TaskItem>>();
+        Assert.NotNull(list);
+        Assert.Equal(2, list!.Count);
+        Assert.DoesNotContain(list, t => t.Id == deleteTaskId);
+    }
+
+    [Fact]
+    public async Task DeleteTask_CrossProjectId_CannotBeDeletedByMemberOfOtherProjectOnly()
+    {
+        using var ownerClient = _factory.CreateClient();
+        using var otherProjectMemberClient = _factory.CreateClient();
+
+        var projectAId = await RegisterLoginAndCreateProjectAsync(ownerClient, "Project A For Delete Cross-Id Isolation");
+        var taskUnderAId = await CreateTaskAsync(ownerClient, projectAId, "A-only task");
+
+        await RegisterLoginAndCreateProjectAsync(otherProjectMemberClient, "Project B For Delete Cross-Id Isolation");
+
+        var deleteResponse = await otherProjectMemberClient.DeleteAsync($"/api/v1/tasks/{taskUnderAId}");
+        Assert.Equal(HttpStatusCode.NotFound, deleteResponse.StatusCode);
+
+        var ownerGetResponse = await ownerClient.GetAsync($"/api/v1/tasks/{taskUnderAId}");
+        Assert.Equal(HttpStatusCode.OK, ownerGetResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteTask_WithoutToken_ShouldReturnUnauthorized()
+    {
+        using var client = _factory.CreateClient();
+
+        var response = await client.DeleteAsync($"/api/v1/tasks/{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
 }

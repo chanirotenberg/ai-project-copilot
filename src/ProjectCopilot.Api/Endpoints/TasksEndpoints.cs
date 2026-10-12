@@ -98,6 +98,31 @@ public static class TasksEndpoints
             return Results.Ok(task);
         }).RequireAuthorization();
 
+        group.MapDelete("/{id:guid}", async (
+            Guid id,
+            ITaskRepository repository,
+            IProjectMembershipService membershipService,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var task = await repository.GetByIdAsync(id, cancellationToken);
+
+            if (task is null)
+            {
+                throw NotFoundException.HiddenResource();
+            }
+
+            await membershipService.EnsureMemberAsync(
+                task.ProjectId,
+                user.GetUserId(),
+                cancellationToken);
+
+            repository.Delete(task);
+            await repository.SaveChangesAsync(cancellationToken);
+
+            return Results.NoContent();
+        }).RequireAuthorization();
+
         return app;
     }
 }

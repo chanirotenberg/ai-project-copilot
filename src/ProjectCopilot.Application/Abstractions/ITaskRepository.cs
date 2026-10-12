@@ -16,6 +16,8 @@ public interface ITaskRepository
         TaskItem task,
         CancellationToken cancellationToken = default);
 
+    void Delete(TaskItem task);
+
     Task SaveChangesAsync(
         CancellationToken cancellationToken = default);
 }

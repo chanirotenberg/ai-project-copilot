@@ -1,11 +1,16 @@
 import { useState } from 'react';
+import { ApiError } from '../api/types';
 import { formatDate } from '../projects/formatDate';
 import { getTaskErrorMessage } from './taskErrorMessages';
+import { useDeleteTask } from './useDeleteTask';
 import { useUpdateTask } from './useUpdateTask';
 import type { Task } from './types';
 
 const STATUSES = ['Todo', 'InProgress', 'Done'] as const;
 const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'] as const;
+
+const DELETE_CONFIRM_MESSAGE = 'Delete this task? This cannot be undone.';
+const GENERIC_DELETE_ERROR = 'Unable to delete task. Please try again.';
 
 /** Converts an ISO date/datetime string to the `YYYY-MM-DD` shape a native `<input type="date">` expects. */
 function toDateInputValue(iso: string): string {
@@ -27,6 +32,7 @@ function toDateInputValue(iso: string): string {
  */
 export function TaskRow({ task, projectId }: { task: Task; projectId: string }) {
   const updateTaskMutation = useUpdateTask(projectId);
+  const deleteTaskMutation = useDeleteTask(projectId);
 
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
@@ -81,6 +87,13 @@ export function TaskRow({ task, projectId }: { task: Task; projectId: string }) 
         // in-progress edits intact - no reset of title/description/etc.
       },
     );
+  }
+
+  function handleDelete() {
+    if (!window.confirm(DELETE_CONFIRM_MESSAGE)) {
+      return;
+    }
+    deleteTaskMutation.mutate(task.id);
   }
 
   if (isEditing) {
@@ -176,8 +189,18 @@ export function TaskRow({ task, projectId }: { task: Task; projectId: string }) 
       {task.isBlocked ? <span> (Blocked)</span> : null}
       <p>Due date: {task.dueDate ? formatDate(task.dueDate) : 'No due date'}</p>
       <p>{task.description ? task.description : 'No description provided.'}</p>
+      {deleteTaskMutation.isError ? (
+        <p role="alert">
+          {deleteTaskMutation.error instanceof ApiError
+            ? deleteTaskMutation.error.message
+            : GENERIC_DELETE_ERROR}
+        </p>
+      ) : null}
       <button type="button" onClick={startEditing}>
         Edit
+      </button>
+      <button type="button" onClick={handleDelete} disabled={deleteTaskMutation.isPending}>
+        {deleteTaskMutation.isPending ? 'Deleting…' : 'Delete'}
       </button>
     </li>
   );

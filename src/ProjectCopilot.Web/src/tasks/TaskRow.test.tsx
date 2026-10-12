@@ -250,4 +250,48 @@ describe('TaskRow', () => {
     expect('assignedUserId' in requestBody).toBe(true);
     expect(requestBody.assignedUserId).toBeNull();
   });
+
+  it('Delete button is visible on a task row', () => {
+    renderTaskRow();
+
+    expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument();
+  });
+
+  it('clicking Delete and declining the confirmation does not send a request', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    renderTaskRow();
+    fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+
+    expect(window.confirm).toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('clicking Delete and confirming sends a DELETE to the correct task id', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    (fetch as Mock).mockResolvedValueOnce(fakeResponse(204, undefined));
+
+    renderTaskRow();
+    fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+
+    const [url, options] = (fetch as Mock).mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/api/v1/tasks/task-1');
+    expect(options.method).toBe('DELETE');
+  });
+
+  it('a delete error is shown and the item stays in the list', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    (fetch as Mock).mockResolvedValueOnce(
+      fakeResponse(500, { status: 500, title: 'Server error.' }),
+    );
+
+    renderTaskRow();
+    fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Server error.');
+    expect(screen.getByText('Write spec')).toBeInTheDocument();
+  });
 });

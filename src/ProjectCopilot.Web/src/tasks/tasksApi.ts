@@ -29,3 +29,10 @@ export function updateTask(id: string, request: UpdateTaskRequest): Promise<Task
     body: request,
   });
 }
+
+/** `DELETE /api/v1/tasks/{id}` - deletes a task. Returns `204 No Content`. */
+export function deleteTask(id: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/tasks/${id}`, {
+    method: 'DELETE',
+  });
+}
