@@ -1,4 +1,5 @@
 using FluentValidation;
+using ProjectCopilot.Application.Common;
 
 namespace ProjectCopilot.Application.Tasks.CreateTask;
 
@@ -31,9 +32,12 @@ public sealed class CreateTaskValidator : AbstractValidator<CreateTaskCommand>
 
         // Calendar-day comparison (not instant), matching Project.Deadline's approved
         // semantics: a date-only "today" due date (as a native <input type="date"> sends)
-        // is allowed; only a genuinely past date is rejected.
+        // is allowed; only a genuinely past date is rejected. Normalized to UTC first, since
+        // comparing the raw deserialized value's .Date would implicitly reinterpret a
+        // Kind = Local instant relative to the host's local timezone.
         RuleFor(x => x.DueDate)
-            .Must(dueDate => dueDate is null || dueDate.Value.Date >= DateTime.UtcNow.Date)
+            .Must(dueDate => dueDate is null
+                || DateTimeNormalization.NormalizeToUtc(dueDate)!.Value.Date >= DateTime.UtcNow.Date)
             .WithMessage("Due date must not be before today.");
     }
 }
