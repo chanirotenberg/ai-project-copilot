@@ -1,5 +1,6 @@
 import { ApiError } from '../api/types';
 import { parseJsonResponseOrThrow, resolveApiBaseUrl } from '../api/httpCore';
+import { queryClient } from '../app/queryClient';
 import type { AuthSessionResponse, SessionSnapshot, SessionUser } from './types';
 
 /**
@@ -100,6 +101,11 @@ function clearSession(): void {
   currentSession = null;
   snapshot = { isAuthenticated: false, user: null };
   clearRefreshToken();
+  // Every session-ending path (explicit logout, forced logout after a
+  // rejected/unavailable refresh token) routes through here. Clearing the
+  // cache prevents the next user to sign in on this tab from briefly
+  // rendering the previous user's cached Projects/Tasks/Documents.
+  queryClient.clear();
 }
 
 /**

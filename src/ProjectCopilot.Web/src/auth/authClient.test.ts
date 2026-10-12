@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vite
 import * as authClient from './authClient';
 import { ApiError } from '../api/types';
 import { fakeResponse } from '../test/fakeResponse';
+import { queryClient } from '../app/queryClient';
+import { PROJECTS_QUERY_KEY } from '../projects/useProjects';
 
 const { REFRESH_TOKEN_STORAGE_KEY } = authClient;
 
@@ -185,5 +187,24 @@ describe('authClient', () => {
     expect(notified).toBe(true);
 
     unsubscribe();
+  });
+
+  it('logout clears the TanStack Query cache, so the next user cannot briefly see the previous user cached data', () => {
+    sessionStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, 'refresh-0');
+    queryClient.setQueryData(PROJECTS_QUERY_KEY, [{ id: 'p1', name: 'User A Project' }]);
+
+    authClient.logout();
+
+    expect(queryClient.getQueryData(PROJECTS_QUERY_KEY)).toBeUndefined();
+  });
+
+  it('a refresh rejected with 401 also clears the TanStack Query cache (forced logout path)', async () => {
+    sessionStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, 'refresh-0');
+    queryClient.setQueryData(PROJECTS_QUERY_KEY, [{ id: 'p1', name: 'User A Project' }]);
+    (fetch as Mock).mockResolvedValueOnce(fakeResponse(401, { title: 'Authentication failed.' }));
+
+    await expect(authClient.refreshSession()).rejects.toBeInstanceOf(ApiError);
+
+    expect(queryClient.getQueryData(PROJECTS_QUERY_KEY)).toBeUndefined();
   });
 });
