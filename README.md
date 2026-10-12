@@ -149,8 +149,23 @@ dotnet run --project .\src\ProjectCopilot.Api\ProjectCopilot.Api.csproj -- --see
 
 - The seed is idempotent: running it multiple times will not create duplicate data.
 - It works against an empty database.
-- Demo project: `Checkout Platform V2` (`980f644c-039f-4031-80b0-c07ff3d14993`).
-- Demo user id (referenced as `CreatedByUserId`): `11111111-1111-1111-1111-111111111111`.
+- Only runs when `ASPNETCORE_ENVIRONMENT=Development`; otherwise it prints an error and
+  exits without seeding (the default `dotnet run` profiles already set this, so the
+  command above works unchanged for local development).
+- Seeds a real, loginable demo account via ASP.NET Core Identity:
+  `demo@projectcopilot.local` / `DemoUser1234` (user id
+  `11111111-1111-1111-1111-111111111111`). This is a **Development-only credential**,
+  intentionally public for QA — not a secret, and never used outside Development.
+- Seeds 5 projects (all owned by, and with the demo user as a member of, the account
+  above), covering a range of states for manual QA:
+  - `Checkout Platform V2` (`980f644c-039f-4031-80b0-c07ff3d14993`) — the original demo
+    project, unchanged.
+  - `Website Redesign` — a future deadline, 4 tasks (done/in-progress/todo/blocked) and
+    2 documents.
+  - `Mobile App Launch` — a past deadline while still `Active`, 3 tasks including one
+    overdue-and-in-progress, and 3 documents.
+  - `Internal Automation` — a null description, 2 tasks, no documents.
+  - `Empty Project` — no tasks and no documents, for the empty-state UI.
 
 ## Build & Test
 

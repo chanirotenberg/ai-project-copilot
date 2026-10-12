@@ -143,6 +143,14 @@ var app = builder.Build();
 
 if (args.Contains("--seed-demo"))
 {
+    if (!app.Environment.IsDevelopment())
+    {
+        Console.Error.WriteLine(
+            "--seed-demo is only allowed when ASPNETCORE_ENVIRONMENT=Development.");
+
+        return;
+    }
+
     using var scope = app.Services.CreateScope();
 
     var seeder = scope.ServiceProvider
