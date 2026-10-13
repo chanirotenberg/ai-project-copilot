@@ -865,7 +865,7 @@ This breakdown organizes the Phase 2 requirements above into small, independentl
 - OUT OF SCOPE: the processing logic itself.
 - Definition of Done: state is visible via API and transitions correctly on success/failure.
 - Dependencies: Slice 2.1.
-- Risk: NORMAL.
+- Risk: HIGH-RISK (reclassified from NORMAL after Gatekeeper review: requires an EF Core migration/schema change).
 - Demo/Verification: observe state transition through the API for a real document.
 
 ### Slice 2.3 — Extraction, Normalization, Chunking
