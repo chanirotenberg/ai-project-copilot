@@ -684,7 +684,7 @@ This breakdown organizes the Phase 1 requirements above into small, independentl
 - Dependencies: none (can run in parallel with backend slices).
 - Risk: SMALL.
 - Demo/Verification: clean build/lint/typecheck output.
-- Status: NOT STARTED.
+- Status: DONE. Commit d7ff4b9.
 
 ### Slice 1.8 — Login UI + Session Handling
 - Goal: Real login screen with token storage and protected routing.
@@ -694,7 +694,7 @@ This breakdown organizes the Phase 1 requirements above into small, independentl
 - Dependencies: Slices 1.2–1.4, 1.7.
 - Risk: NORMAL.
 - Demo/Verification: manual/automated login flow against the real API.
-- Status: NOT STARTED.
+- Status: DONE. Commit 28023e7.
 
 ### Slice 1.9 — Projects UI (List + Create)
 - Goal: Projects screen and Create Project UI.
@@ -704,7 +704,7 @@ This breakdown organizes the Phase 1 requirements above into small, independentl
 - Dependencies: Slices 1.5, 1.8.
 - Risk: NORMAL.
 - Demo/Verification: create a project in the UI and see it listed.
-- Status: NOT STARTED.
+- Status: DONE. Commit c8281a6.
 
 ### Slice 1.10 — Project Dashboard UI
 - Goal: Basic Project Dashboard.
@@ -714,7 +714,7 @@ This breakdown organizes the Phase 1 requirements above into small, independentl
 - Dependencies: Slice 1.9.
 - Risk: SMALL.
 - Demo/Verification: open dashboard for a real seeded project.
-- Status: NOT STARTED.
+- Status: DONE. Commit c34e3ee.
 
 ### Slice 1.11 — Tasks UI (List/Create/Edit)
 - Goal: Tasks UI for a project.
@@ -724,7 +724,7 @@ This breakdown organizes the Phase 1 requirements above into small, independentl
 - Dependencies: Slice 1.9.
 - Risk: NORMAL.
 - Demo/Verification: create, list and edit a task in the UI.
-- Status: NOT STARTED.
+- Status: DONE. Commit 41bcc7e.
 
 ### Slice 1.12 — Documents Metadata Backend
 - Goal: Documents Metadata entity/API (metadata only, no ingestion).
@@ -734,7 +734,7 @@ This breakdown organizes the Phase 1 requirements above into small, independentl
 - Dependencies: Slice 1.5.
 - Risk: NORMAL.
 - Demo/Verification: create/list document metadata via API for a real project.
-- Status: NOT STARTED.
+- Status: DONE. Commit 29bbcb4.
 
 ### Slice 1.13 — Documents Metadata UI
 - Goal: UI for Documents Metadata.
@@ -744,7 +744,7 @@ This breakdown organizes the Phase 1 requirements above into small, independentl
 - Dependencies: Slice 1.12.
 - Risk: SMALL.
 - Demo/Verification: view document metadata for a real seeded project.
-- Status: NOT STARTED.
+- Status: DONE. Commit 6e3f96f.
 
 ### Slice 1.14 — Frontend Quality Gates + CI
 - Goal: Enforce frontend quality and add it to CI.
@@ -754,9 +754,9 @@ This breakdown organizes the Phase 1 requirements above into small, independentl
 - Dependencies: Slices 1.7–1.13.
 - Risk: NORMAL.
 - Demo/Verification: green CI run including the frontend job.
-- Status: NOT STARTED.
+- Status: DONE. Commit 3cad692.
 
-Phase 1 is not closed, and Phase 2 must not start, until Slices 1.1–1.14 are all DONE and the Phase 1 Definition of Done above passes.
+Phase 1 is DONE. Slices 1.1–1.14 are all DONE and the Phase 1 Definition of Done above has passed (verified 2026-10-13: backend tests 162/162 passing, latest CI run on commit c61fff4 completed with conclusion success for both the backend and frontend jobs).
 
 ### Stop Point
 
@@ -767,6 +767,8 @@ After Phase 1 the application should already be presentable as a real Full Stack
 # 15. PHASE 2 — Project Memory
 
 **Estimate:** 5–7 days
+
+**Status:** NOT STARTED. Current next planned slice: 2.1 — Document Upload API.
 
 ## Deliverable
 
@@ -1728,17 +1730,21 @@ This is the final Phase. After Slices 8.1–8.9 are all DONE and the Phase 8 Def
 
 # 23. Current Active Phase
 
+Phase 1 — Full-Stack Core: DONE. Slices 1.1–1.14 all DONE; Phase 1 Definition of Done passed (verified 2026-10-13).
+
 Current active phase:
 
 ```text
-Phase 1 — Full-Stack Core
+Phase 2 — Project Memory
 ```
 
-However, before significant Phase 1 work, inspect the existing repository and confirm the completed Phase 0 artifacts still satisfy the SDD gate.
+Current next planned slice:
 
-Do not rebuild Phase 0 if the requirement is already correctly satisfied.
+```text
+Slice 2.1 — Document Upload API
+```
 
-If a Phase 0 gate item is objectively missing, report it clearly and fix only the missing gap before continuing.
+Phase 2 has not started implementation yet. Do not begin Slice 2.1 implementation until it has gone through Gatekeeper/Researcher/Architect inspection and been explicitly approved.
 
 ---
 
