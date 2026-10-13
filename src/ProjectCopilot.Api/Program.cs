@@ -9,6 +9,7 @@ using ProjectCopilot.Application.Projects.CreateProject;
 using ProjectCopilot.Application.Tasks.CreateTask;
 using ProjectCopilot.Application.Documents.CreateDocument;
 using ProjectCopilot.Application.Documents.UpdateDocument;
+using ProjectCopilot.Application.Documents.UploadDocumentFile;
 
 using ProjectCopilot.Application.Abstractions;
 using ProjectCopilot.Infrastructure.Repositories;
@@ -16,6 +17,7 @@ using ProjectCopilot.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using ProjectCopilot.Infrastructure.Persistence;
 using ProjectCopilot.Infrastructure.Identity;
+using ProjectCopilot.Infrastructure.Storage;
 
 using ProjectCopilot.Application.Auth.Register;
 using ProjectCopilot.Application.Auth.Login;
@@ -75,6 +77,32 @@ builder.Services.AddOptions<JwtOptions>()
         "Jwt:Issuer and Jwt:Audience must both be configured.")
     .ValidateOnStart();
 
+// Where uploaded document files are written. A relative RootPath is resolved against the
+// content root so the location does not depend on the process working directory, and the
+// resolution happens before validation so an unusable value fails at startup rather than on the
+// first upload.
+builder.Services.AddOptions<DocumentStorageOptions>()
+    .Bind(builder.Configuration.GetSection("DocumentStorage"))
+    .PostConfigure(o =>
+    {
+        if (!string.IsNullOrWhiteSpace(o.RootPath) && !Path.IsPathRooted(o.RootPath))
+        {
+            o.RootPath = Path.GetFullPath(
+                Path.Combine(builder.Environment.ContentRootPath, o.RootPath));
+        }
+    })
+    .Validate(
+        o => !string.IsNullOrWhiteSpace(o.RootPath) && Path.IsPathRooted(o.RootPath),
+        "DocumentStorage:RootPath must be configured and resolve to an absolute path.")
+    .ValidateOnStart();
+
+builder.Services.AddOptions<DocumentUploadOptions>()
+    .Bind(builder.Configuration.GetSection("DocumentUpload"))
+    .Validate(
+        o => o.MaxFileSizeBytes > 0,
+        "DocumentUpload:MaxFileSizeBytes must be greater than zero.")
+    .ValidateOnStart();
+
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer();
@@ -117,6 +145,16 @@ builder.Services.AddScoped<IValidator<CreateDocumentCommand>, CreateDocumentVali
 
 builder.Services.AddScoped<UpdateDocumentHandler>();
 builder.Services.AddScoped<IValidator<UpdateDocumentCommand>, UpdateDocumentValidator>();
+
+builder.Services.AddScoped<IDocumentFileStorage, LocalFileSystemDocumentStorage>();
+
+builder.Services.AddScoped<UploadDocumentFileHandler>();
+
+// The upload size ceiling is configuration, so the validator is built from the bound options
+// rather than hard-coding the limit in the Application layer.
+builder.Services.AddScoped<IValidator<UploadDocumentFileCommand>>(serviceProvider =>
+    new UploadDocumentFileValidator(
+        serviceProvider.GetRequiredService<IOptions<DocumentUploadOptions>>().Value.MaxFileSizeBytes));
 
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();

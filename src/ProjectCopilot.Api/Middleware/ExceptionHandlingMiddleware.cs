@@ -53,6 +53,17 @@ public sealed class ExceptionHandlingMiddleware
                 Detail = ex.Message
             });
         }
+        catch (ConflictException ex)
+        {
+            context.Response.StatusCode = StatusCodes.Status409Conflict;
+
+            await context.Response.WriteAsJsonAsync(new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "Request conflicts with the current resource state.",
+                Detail = ex.Message
+            });
+        }
         catch (InvalidCredentialsException ex)
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -75,6 +86,34 @@ public sealed class ExceptionHandlingMiddleware
                 Detail = "The request body is malformed."
             });
         }
+        // A request body that exceeds the endpoint's size limit is aborted by the server while
+        // being read. Depending on where the read happens, the limit surfaces either directly or
+        // wrapped by the form reader, so both shapes map to the same 413.
+        catch (BadHttpRequestException ex)
+            when (ex.StatusCode == StatusCodes.Status413PayloadTooLarge)
+        {
+            await WriteRequestTooLargeAsync(context);
+        }
+        catch (InvalidDataException ex)
+            when (ex.InnerException is BadHttpRequestException
+                  {
+                      StatusCode: StatusCodes.Status413PayloadTooLarge
+                  })
+        {
+            await WriteRequestTooLargeAsync(context);
+        }
+        catch (InvalidDataException)
+        {
+            // Unparseable multipart payload — a client error, not a server fault.
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+
+            await context.Response.WriteAsJsonAsync(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Malformed request.",
+                Detail = "The request body is malformed."
+            });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception occurred.");
@@ -88,5 +127,17 @@ public sealed class ExceptionHandlingMiddleware
                 Title = "An unexpected error occurred."
             });
         }
+    }
+
+    private static async Task WriteRequestTooLargeAsync(HttpContext context)
+    {
+        context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+
+        await context.Response.WriteAsJsonAsync(new ProblemDetails
+        {
+            Status = StatusCodes.Status413PayloadTooLarge,
+            Title = "Request body too large.",
+            Detail = "The request body exceeded the size limit allowed for this endpoint."
+        });
     }
 }

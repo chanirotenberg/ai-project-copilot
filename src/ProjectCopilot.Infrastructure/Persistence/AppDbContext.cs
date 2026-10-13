@@ -67,6 +67,16 @@ public class AppDbContext : IdentityUserContext<ApplicationUser, Guid>
                 .WithMany()
                 .HasForeignKey(d => d.ProjectId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Same xmin-backed concurrency token as RefreshToken above: it makes the
+            // "one file per document" rule hold under concurrent uploads, where the in-memory
+            // check alone cannot. xmin already exists on every PostgreSQL table, so this adds
+            // no column.
+            entity.Property(d => d.RowVersion)
+                .HasColumnName("xmin")
+                .HasColumnType("xid")
+                .ValueGeneratedOnAddOrUpdate()
+                .IsRowVersion();
         });
 
         builder.Entity<TaskItem>(entity =>

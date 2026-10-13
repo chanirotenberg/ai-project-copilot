@@ -38,3 +38,6 @@ postgres-data/
 
 # Local development settings
 src/ProjectCopilot.Api/appsettings.Development.json
+
+# Uploaded document files (default DocumentStorage:RootPath)
+src/ProjectCopilot.Api/App_Data/

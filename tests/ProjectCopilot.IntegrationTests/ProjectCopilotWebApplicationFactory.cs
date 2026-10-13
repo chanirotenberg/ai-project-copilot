@@ -24,6 +24,18 @@ public class ProjectCopilotWebApplicationFactory : WebApplicationFactory<Program
     private static readonly string TestConnectionString =
         $"Host=localhost;Port=5433;Database={TestDbName};Username=postgres;Password=postgres";
 
+    /// <summary>
+    /// Document storage root for this test run. Unique per process and under the OS temp
+    /// directory, so uploads performed by tests can never land in — or delete from — the real
+    /// development storage directory. Removed on normal process exit.
+    /// </summary>
+    public static readonly string TestDocumentStorageRoot = Path.Combine(
+        Path.GetTempPath(),
+        "projectcopilot-test-document-storage",
+        $"{RunEpoch}_{Guid.NewGuid():N}");
+
+    public const long TestMaxUploadSizeBytes = 20L * 1024 * 1024;
+
     private static readonly Lazy<Task> InitializeOnce =
         new(InitializeAsync, LazyThreadSafetyMode.ExecutionAndPublication);
 
@@ -40,7 +52,9 @@ public class ProjectCopilotWebApplicationFactory : WebApplicationFactory<Program
                 ["Jwt:Key"] = TestJwtKey,
                 ["Jwt:Issuer"] = TestJwtIssuer,
                 ["Jwt:Audience"] = TestJwtAudience,
-                ["Jwt:AccessTokenExpiryMinutes"] = "60"
+                ["Jwt:AccessTokenExpiryMinutes"] = "60",
+                ["DocumentStorage:RootPath"] = TestDocumentStorageRoot,
+                ["DocumentUpload:MaxFileSizeBytes"] = TestMaxUploadSizeBytes.ToString()
             });
         });
     }
@@ -61,7 +75,29 @@ public class ProjectCopilotWebApplicationFactory : WebApplicationFactory<Program
         await using var context = new AppDbContext(options);
         await context.Database.MigrateAsync();
 
-        AppDomain.CurrentDomain.ProcessExit += (_, _) => DropDatabaseBestEffort();
+        Directory.CreateDirectory(TestDocumentStorageRoot);
+
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+        {
+            DropDatabaseBestEffort();
+            DeleteDocumentStorageBestEffort();
+        };
+    }
+
+    private static void DeleteDocumentStorageBestEffort()
+    {
+        try
+        {
+            if (Directory.Exists(TestDocumentStorageRoot))
+            {
+                Directory.Delete(TestDocumentStorageRoot, recursive: true);
+            }
+        }
+        catch
+        {
+            // Best-effort only, same rationale as DropDatabaseBestEffort. The directory lives
+            // under the OS temp path, so a leftover is harmless.
+        }
     }
 
     // Reap databases from crashed/killed prior runs. Age-gated (1 hour) so a currently-running

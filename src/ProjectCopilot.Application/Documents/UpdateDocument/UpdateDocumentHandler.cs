@@ -7,6 +7,14 @@ namespace ProjectCopilot.Application.Documents.UpdateDocument;
 
 public sealed class UpdateDocumentHandler
 {
+    /// <summary>
+    /// Reported when another writer updated the document between this request reading it and
+    /// saving. Phrased for the person who hit it, since two members editing the same document is
+    /// an ordinary thing to do rather than an error.
+    /// </summary>
+    public const string ConcurrentlyModifiedMessage =
+        "This document was modified by someone else. Reload it and try again.";
+
     private readonly IDocumentRepository _documentRepository;
     private readonly IProjectMembershipService _membershipService;
     private readonly IValidator<UpdateDocumentCommand> _validator;
@@ -48,7 +56,20 @@ public sealed class UpdateDocumentHandler
         document.Description = command.Description?.Trim();
         document.UpdatedAt = DateTime.UtcNow;
 
-        await _documentRepository.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _documentRepository.SaveChangesAsync(cancellationToken);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            // DocumentMetadata carries an optimistic concurrency token, so a concurrent edit by
+            // another project member is now detected instead of silently overwriting their
+            // change. Two people editing the same document is an everyday occurrence, not a
+            // fault, so it is reported as a 409 the caller can act on rather than being allowed
+            // to fall through to the generic 500 handler (which would also log it at Error
+            // level and pollute alerting).
+            throw new ConflictException(ConcurrentlyModifiedMessage);
+        }
 
         return document;
     }

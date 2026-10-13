@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ProjectCopilot.Application.Abstractions;
+using ProjectCopilot.Application.Common.Exceptions;
 using ProjectCopilot.Domain.Entities;
 using ProjectCopilot.Infrastructure.Persistence;
 
@@ -50,6 +51,23 @@ public class DocumentRepository : IDocumentRepository
     public async Task SaveChangesAsync(
         CancellationToken cancellationToken = default)
     {
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            // A concurrent write already moved this document forward (its RowVersion/xmin no
+            // longer matches what we read). Application must not reference EF Core, so the
+            // translation happens here, at the only layer allowed to know about
+            // DbUpdateConcurrencyException - same approach as RefreshTokenRepository.
+            //
+            // What the lost race *means* is caller-specific, so this stays neutral: the upload
+            // handler turns it into a 409, and anything that does not handle it is reported as
+            // an unexpected failure, exactly as a raw DbUpdateConcurrencyException was before.
+            throw new ConcurrencyConflictException(
+                "The document was modified by another request.",
+                exception);
+        }
     }
 }
