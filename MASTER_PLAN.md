@@ -768,7 +768,7 @@ After Phase 1 the application should already be presentable as a real Full Stack
 
 **Estimate:** 5–7 days
 
-**Status:** NOT STARTED. Current next planned slice: 2.1 — Document Upload API.
+**Status:** IN PROGRESS. Current next planned slice: 2.2 — Processing State Machine.
 
 ## Deliverable
 
@@ -857,6 +857,7 @@ This breakdown organizes the Phase 2 requirements above into small, independentl
 - Dependencies: Slice 1.12, Slice 1.5.
 - Risk: HIGH-RISK (reclassified from NORMAL after Gatekeeper review: requires an EF Core migration, and introduces untrusted binary input, filesystem writes, and a file-validation security boundary).
 - Demo/Verification: upload a real file via API and see it rejected/accepted per validation rules.
+- Status: DONE. Commit ec37cc2.
 
 ### Slice 2.2 — Processing State Machine
 - Goal: Track document processing lifecycle.
@@ -1738,13 +1739,15 @@ Current active phase:
 Phase 2 — Project Memory
 ```
 
+Slice 2.1 — Document Upload API: DONE (commit ec37cc2).
+
 Current next planned slice:
 
 ```text
-Slice 2.1 — Document Upload API
+Slice 2.2 — Processing State Machine
 ```
 
-Phase 2 has not started implementation yet. Do not begin Slice 2.1 implementation until it has gone through Gatekeeper/Researcher/Architect inspection and been explicitly approved.
+Slice 2.2 has not started implementation yet. Do not begin Slice 2.2 implementation until it has gone through the appropriate workflow and been explicitly approved.
 
 ---
 
