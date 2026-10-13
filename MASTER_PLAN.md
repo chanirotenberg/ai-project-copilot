@@ -855,7 +855,7 @@ This breakdown organizes the Phase 2 requirements above into small, independentl
 - OUT OF SCOPE: processing, extraction, embeddings.
 - Definition of Done: valid uploads succeed; oversized/invalid-type uploads are rejected; covered by tests.
 - Dependencies: Slice 1.12, Slice 1.5.
-- Risk: NORMAL.
+- Risk: HIGH-RISK (reclassified from NORMAL after Gatekeeper review: requires an EF Core migration, and introduces untrusted binary input, filesystem writes, and a file-validation security boundary).
 - Demo/Verification: upload a real file via API and see it rejected/accepted per validation rules.
 
 ### Slice 2.2 — Processing State Machine
