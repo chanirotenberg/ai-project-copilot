@@ -198,6 +198,10 @@ public static class DocumentsEndpoints
             return Results.Ok(DocumentResponse.From(updated));
         }).RequireAuthorization();
 
+        // Deletion is deliberately allowed in every processing status, including Processing:
+        // nothing is actually processing documents yet, so there is nothing to cancel. Once
+        // Slice 2.3 introduces a real processor, revisit delete-versus-processing concurrency
+        // (cancellation, or refusing to delete mid-processing) — do not assume this stays correct.
         group.MapDelete("/{id:guid}", async (
             Guid id,
             IDocumentRepository repository,
@@ -304,6 +308,7 @@ public sealed record DocumentResponse(
     string? OriginalFileName,
     string? ContentType,
     long? SizeBytes,
+    string? Status,
     DateTime CreatedAt,
     DateTime UpdatedAt)
 {
@@ -316,6 +321,7 @@ public sealed record DocumentResponse(
         document.OriginalFileName,
         document.ContentType,
         document.SizeBytes,
+        document.Status,
         document.CreatedAt,
         document.UpdatedAt);
 }

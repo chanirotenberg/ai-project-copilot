@@ -119,6 +119,9 @@ namespace ProjectCopilot.Infrastructure.Persistence.Migrations
                     b.Property<long?>("SizeBytes")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("Status")
+                        .HasColumnType("text");
+
                     b.Property<string>("StorageFileName")
                         .HasColumnType("text");
 

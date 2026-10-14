@@ -33,6 +33,20 @@ public class DocumentMetadata
     /// </summary>
     public string? StorageFileName { get; set; }
 
+    /// <summary>
+    /// Where this document is in the processing lifecycle: "Uploaded", "Processing", "Ready" or
+    /// "Failed". Null means no file has been uploaded yet — the absence of a processing state
+    /// rather than a state of its own.
+    /// </summary>
+    /// <remarks>
+    /// A plain string, matching how <see cref="Project.Status"/> and
+    /// <see cref="TaskItem.Status"/> are stored. The allowed values and the legal transitions
+    /// between them live in the Application layer
+    /// (<c>DocumentProcessingStatuses</c> and <c>TransitionDocumentProcessingStatusHandler</c>),
+    /// which is the only place permitted to change this field.
+    /// </remarks>
+    public string? Status { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

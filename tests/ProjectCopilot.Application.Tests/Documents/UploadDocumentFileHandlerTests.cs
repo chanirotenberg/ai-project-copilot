@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.Extensions.Logging.Abstractions;
 using ProjectCopilot.Application.Common.Exceptions;
+using ProjectCopilot.Application.Documents;
 using ProjectCopilot.Application.Documents.UploadDocumentFile;
 using ProjectCopilot.Domain.Entities;
 
@@ -77,6 +78,9 @@ public class UploadDocumentFileHandlerTests
         Assert.Equal(content.Length, result.SizeBytes);
         Assert.NotNull(result.StorageFileName);
         Assert.EndsWith(extension, result.StorageFileName);
+
+        // A document that has a file always has a processing status, set by the same save.
+        Assert.Equal(DocumentProcessingStatuses.Uploaded, result.Status);
 
         var saved = Assert.Single(_storage.SavedFiles);
         Assert.Equal(result.StorageFileName, saved.Key);
@@ -329,6 +333,7 @@ public class UploadDocumentFileHandlerTests
         Assert.Null(document.ContentType);
         Assert.Null(document.SizeBytes);
         Assert.Null(document.StorageFileName);
+        Assert.Null(document.Status);
         Assert.Equal(0, _repository.SaveChangesCallCount);
         Assert.Empty(_storage.DeletedFileNames);
     }

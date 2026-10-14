@@ -8,6 +8,7 @@ using FluentValidation;
 using ProjectCopilot.Application.Projects.CreateProject;
 using ProjectCopilot.Application.Tasks.CreateTask;
 using ProjectCopilot.Application.Documents.CreateDocument;
+using ProjectCopilot.Application.Documents.TransitionDocumentProcessingStatus;
 using ProjectCopilot.Application.Documents.UpdateDocument;
 using ProjectCopilot.Application.Documents.UploadDocumentFile;
 
@@ -146,6 +147,14 @@ builder.Services.AddScoped<IValidator<CreateDocumentCommand>, CreateDocumentVali
 builder.Services.AddScoped<UpdateDocumentHandler>();
 builder.Services.AddScoped<IValidator<UpdateDocumentCommand>, UpdateDocumentValidator>();
 
+// Registered in every environment: this is the application-level document processing state
+// machine, which Slice 2.3's processing code is expected to drive. Only the manual verification
+// *route* that currently exercises it is Development-only — see the gate further down.
+builder.Services.AddScoped<TransitionDocumentProcessingStatusHandler>();
+builder.Services
+    .AddScoped<IValidator<TransitionDocumentProcessingStatusCommand>,
+        TransitionDocumentProcessingStatusValidator>();
+
 builder.Services.AddScoped<IDocumentFileStorage, LocalFileSystemDocumentStorage>();
 
 builder.Services.AddScoped<UploadDocumentFileHandler>();
@@ -213,6 +222,14 @@ app.MapProjectsEndpoints();
 app.MapTasksEndpoints();
 app.MapDocumentsEndpoints();
 app.MapAuthEndpoints();
+
+if (app.Environment.IsDevelopment())
+{
+    // Temporary Slice 2.2 verification route for driving a document's processing status by hand.
+    // Mapped only here, so outside Development the route simply does not exist — see
+    // DevelopmentDocumentProcessingEndpoints for why it is not a production endpoint.
+    app.MapDevelopmentDocumentProcessingEndpoints();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

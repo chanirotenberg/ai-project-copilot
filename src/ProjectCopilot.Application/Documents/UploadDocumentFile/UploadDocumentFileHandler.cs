@@ -135,6 +135,13 @@ public sealed class UploadDocumentFileHandler
             document.ContentType = DocumentFileTypes.CanonicalContentType(extension);
             document.SizeBytes = command.SizeBytes;
             document.StorageFileName = storageFileName;
+
+            // The initial processing status is set in this same mutation, committed by the same
+            // single save below: a document can never be observed as having a file but no
+            // processing status. Every later move out of Uploaded goes through
+            // TransitionDocumentProcessingStatusHandler, which owns the transition rules.
+            document.Status = DocumentProcessingStatuses.Uploaded;
+
             document.UpdatedAt = DateTime.UtcNow;
 
             await _documentRepository.SaveChangesAsync(cancellationToken);
