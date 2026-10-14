@@ -768,7 +768,7 @@ After Phase 1 the application should already be presentable as a real Full Stack
 
 **Estimate:** 5–7 days
 
-**Status:** IN PROGRESS. Current next planned slice: 2.2 — Processing State Machine.
+**Status:** IN PROGRESS. Current next planned slice: 2.3 — Extraction, Normalization, Chunking.
 
 ## Deliverable
 
@@ -867,6 +867,7 @@ This breakdown organizes the Phase 2 requirements above into small, independentl
 - Dependencies: Slice 2.1.
 - Risk: HIGH-RISK (reclassified from NORMAL after Gatekeeper review: requires an EF Core migration/schema change).
 - Demo/Verification: observe state transition through the API for a real document.
+- Status: DONE. Commit 1ef5323.
 
 ### Slice 2.3 — Extraction, Normalization, Chunking
 - Goal: Turn an uploaded document into normalized, chunked text.
@@ -1740,14 +1741,15 @@ Phase 2 — Project Memory
 ```
 
 Slice 2.1 — Document Upload API: DONE (commit ec37cc2).
+Slice 2.2 — Processing State Machine: DONE (commit 1ef5323).
 
 Current next planned slice:
 
 ```text
-Slice 2.2 — Processing State Machine
+Slice 2.3 — Extraction, Normalization, Chunking
 ```
 
-Slice 2.2 has not started implementation yet. Do not begin Slice 2.2 implementation until it has gone through the appropriate workflow and been explicitly approved.
+Slice 2.3 has not started implementation yet. Do not begin Slice 2.3 implementation until it has gone through the appropriate workflow and been explicitly approved.
 
 ---
 
